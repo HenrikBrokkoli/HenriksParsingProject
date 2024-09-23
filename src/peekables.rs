@@ -73,6 +73,9 @@ impl<'a, T> ParseProcess<'a,  T> where T: TPeekable<Item=char>  {
 impl<'a,  T> Iterator for ParseProcess<'a,  T> where T: TPeekable<Item=char> {
     type Item = char;
     fn next(&mut self) -> Option<char> {
+        if !self.check_allowed() {
+            return None;
+        }
         let res = self.to_parse.next();
         if res.is_some() {
             self.current_position += 1
