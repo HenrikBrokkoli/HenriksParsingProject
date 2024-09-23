@@ -56,7 +56,7 @@ impl<T> Graph<T> {
     }
 
     pub fn try_add_edge_with_id(&mut self, source: NodeIndex, target: NodeIndex, id: usize) -> bool {
-        let edge_index: EdgeIndex = self.edges.len();
+        
         let connected_edges = self.connected_edges(source);
         let mut previous: ThingWithNextEdge = ThingWithNextEdge::Node(source);
         let mut next_edge_index = self.nodes[source].first_outgoing_edge;
@@ -69,10 +69,9 @@ impl<T> Graph<T> {
                 next_edge_index = connected_edge.next_outgoing_edge;
                 continue;
             }
-
-
             break;
         }
+        let edge_index: EdgeIndex = self.edges.len();
         match previous {
             ThingWithNextEdge::Node(node) => { self.nodes[node].first_outgoing_edge = Some(edge_index) }
             ThingWithNextEdge::Edge(edge) => { self.edges[edge].next_outgoing_edge = Some(edge_index) }

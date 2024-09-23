@@ -1,5 +1,6 @@
 use peekables::{ParseProcess, TPeekable};
 use simple_graph::Graph;
+use tree::{NodeId, Tree};
 use vms::{Instruction, VM};
 
 
@@ -17,38 +18,39 @@ impl VM for SimpleStackVm {
         //TODO: to_parse is not handled right. Works for the example but will not work when user puts something in curly braces
 
         let instruction = match prod_name {
-            "add" => move |graph: &mut Graph<String>, state: &mut Self::Tstate| {
+            "add" => |tree: &mut Tree<String>,cur_node:NodeId, state: &mut Self::Tstate| {
                 let res = state.stack.pop().unwrap() + state.stack.pop().unwrap();
                 state.stack.push(res);
 
                 Ok(())
             },
-            "sub" => move |graph: &mut Graph<String>, state: &mut Self::Tstate| {
+            "sub" => |tree: &mut Tree<String>,cur_node:NodeId, state: &mut Self::Tstate| {
                 let second = state.stack.pop().unwrap();
                 let res = state.stack.pop().unwrap() - second;
                 state.stack.push(res);
                 Ok(())
             },
-            "number" => move |graph: &mut Graph<String>, state: &mut Self::Tstate| {
+            "number" =>  |tree: &mut Tree<String>,cur_node:NodeId, state: &mut Self::Tstate| {
                 Ok(())
             },
-            "digit" => move |graph: &mut Graph<String>, state: &mut Self::Tstate| {
-                state.stack.push(graph.find_node(0, 0).unwrap().data.parse::<usize>().unwrap());
+            "digit" =>  |tree: &mut Tree<String>,cur_node:NodeId, state: &mut Self::Tstate| {
+                let digit_string= tree.get_by_path_or_none(cur_node, vec![0].into_iter()).unwrap().unwrap();
+                state.stack.push(digit_string.data.parse::<usize>().unwrap());
                 Ok(())
             },
-            "number_s_" => move |graph: &mut Graph<String>, state: &mut Self::Tstate| {
+            "number_s_" =>  |tree: &mut Tree<String>,cur_node:NodeId, state: &mut Self::Tstate| {
                 let digit = state.stack.pop().unwrap();
                 let prev_digit = state.stack.pop().unwrap();
                 let res = prev_digit * 10 + digit;
                 state.stack.push(res);
                 Ok(())
             },
-            "print" => move |graph: &mut Graph<String>, state: &mut Self::Tstate| {
+            "print" =>  |tree: &mut Tree<String>,cur_node:NodeId, state: &mut Self::Tstate| {
                 let digit = state.stack.pop().unwrap();
                 println!("stack last item:{digit}");
                 Ok(())
             },
-            _ => move |_graph: &mut Graph<String>, _state: &mut Self::Tstate| {
+            _ =>  |_tree: &mut Tree<String>,cur_node:NodeId, _state: &mut Self::Tstate| {
                 Ok(())
             }
         };

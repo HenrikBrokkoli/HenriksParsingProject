@@ -1,9 +1,9 @@
 extern crate core;
-extern crate HenriksParsinProject;
+extern crate HenriksParsingProject;
 
 use std::{env, fs};
-use HenriksParsinProject::script_parser::Parser;
-use HenriksParsinProject::vms::{NullVm,VM};
+use HenriksParsingProject::script_parser::Parser;
+use HenriksParsingProject::vms::{NullVm,VM};
 
 
 

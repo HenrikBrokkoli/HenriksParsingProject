@@ -3,8 +3,6 @@ use crate::errors::ParserError::{EndOfCharsError, Impossible, UnexpectedCharErro
 use crate::peekables::{ParseProcess, TPeekable};
 
 
-
-
 pub fn parse_whitespace<T>(to_parse: &mut ParseProcess<T>) where T: TPeekable<Item=char> {
     while let Some(x) = to_parse.peek() {
         if !x.is_whitespace() {
@@ -51,9 +49,9 @@ pub fn parse_isize<T>(to_parse: &mut ParseProcess<T>) -> Result<isize, ParserErr
         numbers.push(cur_char);
     }
 
-    let cur_char = to_parse.peek().ok_or(EndOfCharsError)?;
+    let cur_char = *to_parse.peek().ok_or(EndOfCharsError)?;
     if !cur_char.is_digit(10) {
-        return Err(UnexpectedCharError { chr: *cur_char, pos: to_parse.cur_pos(),expected:String::from("digit or - expected") });
+        return Err(UnexpectedCharError { chr: cur_char, pos: to_parse.cur_pos(),expected:String::from("digit or - expected") });
     }
 
     to_parse.next();

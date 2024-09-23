@@ -2,6 +2,9 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::Chars;
+
+use parser_data::{ElementIndex, ElementType, ElementVerbose, Production};
+use tree::{NodeId, Tree};
 use vms::{Instruction, VM};
 
 use crate::errors::GrammarError::MissingProduction;
@@ -10,89 +13,97 @@ use crate::errors::ParserError::{EndOfCharsError, UnexpectedCharError};
 use crate::first_sets::get_first_sets;
 use crate::follow_sets::get_follow_sets;
 use crate::peekables::{ParseProcess, PeekableWrapper, TPeekable};
-use crate::rule_parsing::{Element, ET, RuleParser, Production};
+use crate::rule_parsing::RuleParser;
 use crate::sets::SetMember;
-use crate::simple_graph::Graph;
 use crate::steuer_map::{get_steuermaps, NTRules};
 
 //TODO detect left recursive rules that lead to nonterminating of get_first_sets
 
-pub struct Parser<'a, T:> where T: VM {
+pub struct Parser<'a, T:>
+where
+    T: VM,
+{
     vm: &'a T,
-    discard: Option<String>,
-    rules_with_steuermaps: HashMap<String, NTRules<T::Tstate>>,
+    discard: Option<ElementIndex>,
+    rules_with_steuermaps: HashMap<ElementIndex, NTRules<T::Tstate>>,
+    elements: Vec<ElementVerbose>,
 }
 
 
-impl<'a, T> Parser<'a, T> where T: VM + 'a {
+impl<'a, T> Parser<'a, T>
+where
+    T: VM + 'a,
+{
     pub fn new(rule_text: &str, vm: &'a T) -> Parser<'a, T> {
         let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rule_text.chars().peekable());
         let mut rule_parser = RuleParser::new(&mut peekable, vm);
         let rules = rule_parser.parse_rules().unwrap();
+        let discard = rules.ignore;
+        let RuleParser { vm: _, parse_process: _parse_process, parser_data } = rule_parser;
+        let elements = parser_data.get_elements_verbose();
+        let first_dict = get_first_sets(&parser_data).unwrap();
+        let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(), &first_dict, &parser_data).unwrap();
 
-        let first_sets = get_first_sets(&rules.rules).unwrap();
-
-        let follow_sets = get_follow_sets("start".to_string(), &rules.rules, &first_sets).unwrap();
-        let discard = rules.ignore.clone();
-        let RuleParser { vm: _, parse_process: _parse_process, parse_rules } = rule_parser;
-        let rules = parse_rules;
-        let rules_with_steuermaps = get_steuermaps(rules.rules, &first_sets, &follow_sets).unwrap();
-        Parser { discard, rules_with_steuermaps, vm }
+        let rules_with_steuermaps = get_steuermaps(&first_dict, &follow_dict, parser_data).unwrap();
+        Parser { vm, discard, rules_with_steuermaps, elements }
     }
 
-    pub fn parse(&mut self, to_parse: &'a str, state: &mut T::Tstate) -> Result<Graph<String>, ParserError> {
+    pub fn parse(&mut self, to_parse: &'a str, state: &mut T::Tstate) -> Result<Tree<String>, ParserError> {
         let mut peekable = PeekableWrapper::<Chars>::new(to_parse.chars().peekable());
         let mut to_parse = ParseProcess::<PeekableWrapper<Chars>>::new(&mut peekable, None, None);
-        self.parse_production(&mut to_parse, "start", state)
+        let start_index = self.elements.iter().position(|r| *r == ElementVerbose::new(String::from("start"), ElementType::NonTerminal)).unwrap();
+        let mut tree = Tree::new();
+
+        self.parse_production(&mut to_parse, start_index, state, &mut tree, None)?;
+        Ok(tree)
     }
 
-
-    fn parse_production(&self, to_parse: &mut ParseProcess<PeekableWrapper<Chars<'a>>>, production_name: &str, state: &mut T::Tstate)
-                        -> Result<Graph<String>, ParserError> {
+    fn get_fitting_production(&self, to_parse: &mut ParseProcess<PeekableWrapper<Chars<'a>>>, el_index: ElementIndex, cur: &SetMember) -> Result<&Rc<Production>, ParserError> {
+        let nt_rule = self.rules_with_steuermaps.get(&el_index).ok_or(MissingProduction { index: el_index })?;
+        let fitting_production: Option<&Rc<Production>> = nt_rule.steuermap.get(cur);
+        match fitting_production {
+            None => { Err(UnexpectedCharError { chr: *to_parse.peek().unwrap_or(&'#'), pos: to_parse.cur_pos(), expected: nt_rule.steuermap.keys().cloned().map(|x| x.into()).collect::<Vec<String>>().join(";") }) }
+            Some(fp) => { Ok(fp) }
+        }
+    }
+    fn parse_production(&self, to_parse: &mut ParseProcess<PeekableWrapper<Chars<'a>>>, el_index: ElementIndex, state: &mut T::Tstate, tree: &mut Tree<String>, current_node: Option<NodeId>)
+                        -> Result<(), ParserError> {
         let cur = SetMember::from(to_parse.peek());
-        let nt_rule = self.rules_with_steuermaps.get(production_name).ok_or(MissingProduction { name: String::from(production_name) })?;
-        let prod_to_choose: Option<&Rc<Production>> = nt_rule.steuermap.get(&cur);
-        let mut graph = Graph::new();
-        let start = graph.add_node("".to_string());
+        let nt_rule = self.rules_with_steuermaps.get(&el_index).ok_or(MissingProduction { index: el_index })?;
+        let fitting_production: &Rc<Production>= self.get_fitting_production(to_parse, el_index, &cur)?;
 
-        if let Some(prod) = prod_to_choose {
-            let prod = &**prod;
-            match prod {
-                Production::NotEmpty(prod_not_empty) => {
-                    for element in prod_not_empty {
-                        match element {
-                            Element { el_type: ET::Terminal(terminal), keep_data: true } => {
-                                let index = graph.add_node(self.parse_terminal(to_parse, terminal.as_str())?);
-                                graph.add_edge(start, index)
-                            }
-                            Element { el_type: ET::Terminal(terminal), keep_data: false } => {
-                                self.parse_terminal(to_parse, terminal.as_str())?;
-                            }
-                            Element { el_type: ET::NonTerminal(nested_prod), keep_data: true } => {
-                                graph.add_graph_at_node(self.parse_production(to_parse, nested_prod, state)?, start, start);
-                            }
-                            Element { el_type: ET::NonTerminal(nested_prod), keep_data: false } => {
-                                self.parse_production(to_parse, nested_prod, state)?;
-                            }
+        let id=tree.add_node(String::from(""),current_node)?;
+     
+        let prod = &**fitting_production;
+        match prod {
+            Production::NotEmpty(prod_not_empty) => {
+                for next_element_index in prod_not_empty {
+                    let elemente_next = self.elements.get(*next_element_index).unwrap().clone();
+
+                    match elemente_next.et {
+                        ElementType::Terminal => {
+                            let _=tree.add_node(self.parse_terminal(to_parse, elemente_next.name.as_str())?,Some(id));
+                        }
+                        ElementType::NonTerminal => {
+                            self.parse_production(to_parse, *next_element_index, state, tree,Some(id))?;
                         }
                     }
                 }
-                Production::Empty => {}
-            };
-        } else {
-            return Err(UnexpectedCharError { chr: *to_parse.peek().unwrap_or(&'#'), pos: to_parse.cur_pos(), expected: nt_rule.steuermap.keys().cloned().map(|x| x.into()).collect::<Vec<String>>().join(";") });
-        }
-        self.run_instructions(&mut graph, &nt_rule.instruction, state).map_err(|x| ParserError::VmError { message: x })?;
+            }
+            Production::Empty => {}
+        };
+     
+        self.run_instructions(tree,id, &nt_rule.instruction, state).map_err(|x| ParserError::VmError { message: x })?;
 
-        Ok(graph)
+        Ok(())
     }
 
-    fn run_instructions(&self, graph: &mut Graph<String>, instruction: &Option<Box<Instruction<T::Tstate>>>, state: &mut T::Tstate) -> Result<(), String> {
+    fn run_instructions(&self, tree: &mut Tree<String>,cur_node:NodeId, instruction: &Option<Box<Instruction<T::Tstate>>>, state: &mut T::Tstate) -> Result<(), String> {
         match instruction {
             None => { Ok(()) }
             Some(instr) => {
                 let func: &Instruction<T::Tstate> = instr.borrow();
-                func(graph, state)
+                func(tree,cur_node, state)
             }
         }
     }
@@ -113,8 +124,9 @@ impl<'a, T> Parser<'a, T> where T: VM + 'a {
 #[cfg(test)]
 mod tests {
     use script_parser::Parser;
-    use vms::counting_vm::CountingVm;
     use vms::{NullVm, VM};
+    use vms::counting_vm::CountingVm;
+
     use crate::errors::ParserError;
 
     #[test]
@@ -184,7 +196,10 @@ mod tests {
 
         let text_to_parse = "a_terminalc_terminal";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
-        let res = graph.find_node_by_path(0, vec![0, 0].into_iter()).unwrap();
+        println!("hallo");
+        println!("{}",format!("{graph:?}"));
+        
+        let res = graph.get_by_path_or_none(0, vec![0, 0].into_iter()).unwrap().unwrap();
         assert_eq!("a_terminal", res.data)
     }
 
@@ -200,8 +215,8 @@ mod tests {
         let mut parser = Parser::new(rules, &vm);
 
         let text_to_parse = "c_terminal";
-        let graph = parser.parse(text_to_parse, &mut state).unwrap();
-        let res = graph.find_node_by_path(0, vec![0, 0].into_iter());
+        let tree = parser.parse(text_to_parse, &mut state).unwrap();
+        let res = tree.get_by_path_or_none(0, vec![0, 0].into_iter()).unwrap();
         assert!(res.is_none())
     }
 
@@ -218,7 +233,7 @@ mod tests {
 
         let text_to_parse = "ab";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
-        let res = &graph.find_node_by_path(0, vec![0, 1, 0].into_iter()).unwrap().data;
+        let res = &graph.get_by_path_or_none(0, vec![0, 1, 0].into_iter()).unwrap().unwrap().data;
         assert_eq!("b", res)
     }
 
@@ -301,9 +316,9 @@ mod tests {
         let text_to_parse = " a  b   c  ";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
 
-        assert_eq!("a", graph.find_node_by_path(0, vec![0].into_iter()).unwrap().data);
-        assert_eq!("b", graph.find_node_by_path(0, vec![1].into_iter()).unwrap().data);
-        assert_eq!("c", graph.find_node_by_path(0, vec![2].into_iter()).unwrap().data);
+        assert_eq!("a", graph.get_by_path_or_none(0, vec![0].into_iter()).unwrap().unwrap().data);
+        assert_eq!("b", graph.get_by_path_or_none(0, vec![1].into_iter()).unwrap().unwrap().data);
+        assert_eq!("c", graph.get_by_path_or_none(0, vec![2].into_iter()).unwrap().unwrap().data);
     }
 
     #[test]
@@ -324,8 +339,8 @@ mod tests {
         let text_to_parse = "a    c";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
 
-        assert_eq!("a", graph.find_node_by_path(0, vec![0, 0].into_iter()).unwrap().data);
-        assert_eq!("c", graph.find_node_by_path(0, vec![1].into_iter()).unwrap().data);
+        assert_eq!("a", graph.get_by_path_or_none(0, vec![0, 0].into_iter()).unwrap().unwrap().data);
+        assert_eq!("c", graph.get_by_path_or_none(0, vec![1].into_iter()).unwrap().unwrap().data);
     }
 
     #[test]

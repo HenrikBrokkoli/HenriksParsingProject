@@ -1,5 +1,4 @@
 use peekables::{ParseProcess, TPeekable};
-use simple_graph::Graph;
 use vms::{Instruction, VM};
 
 pub struct CountingVm {}
@@ -16,7 +15,7 @@ impl VM for CountingVm {
 
 
     fn make_instruction<T>(&self,prod_name:&str, to_parse: &mut ParseProcess<T>) -> Result<Box<Instruction<Self::Tstate>>, String> where T: TPeekable<Item=char> {
-        Ok(Box::new(move |graph, state| CountingVm::increment_counter(state)))
+        Ok(Box::new(move |graph,id, state| CountingVm::increment_counter(state)))
     }
 
     fn create_new_state() -> Self::Tstate {

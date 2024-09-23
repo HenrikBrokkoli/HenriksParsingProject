@@ -1,36 +1,43 @@
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::iter::FromIterator;
+
+use errors::GrammarError;
+use parser_data::{ElementType, ParserData};
 use vms::VM;
+
 use crate::first_sets::first_set_of_partial;
-use crate::named_graph::{GraphError, GraphNamedNodes};
-use crate::rule_parsing::{Element, ET, Production, RuleMap};
-use crate::sets::{NamedSets, NamedSetsNoEmpty, SetMemberWithEmpty, SetMember};
+use crate::named_graph::GraphNamedNodes;
+use crate::parser_data::{ElementIndex, Production, RuleMap};
+use crate::sets::{NamedSets, NamedSetsNoEmpty, SetMember, SetMemberWithEmpty};
 use crate::simple_graph::NodeData;
 
-pub fn get_follow_sets<T>(start: String, rules: &RuleMap<T>, first_sets: &NamedSets)  -> Result<NamedSetsNoEmpty, GraphError> where T:VM {
-    let mut follow_graph = make_graph_with_index(rules)?;
-    follow_graph.get_node_mut(start.as_str())?.data.insert(SetMember::Terminate);
-    for (name, nt_rules) in rules {
+pub type Graph = GraphNamedNodes<HashSet<SetMember>>;
+
+
+pub fn get_follow_sets<T>(start: ElementIndex, first_sets: &NamedSets, parser_data: &ParserData<T>) -> Result<NamedSetsNoEmpty, GrammarError> where T: VM {
+    let mut follow_graph = make_graph_with_index(&parser_data.parse_rules.rules)?;
+    follow_graph.get_node_mut(start)?.data.insert(SetMember::Terminate);
+    for (&el_index, nt_rules) in &parser_data.parse_rules.rules {
         for production in nt_rules.possible_productions.iter() {
             let prodi = &**production;
             if let Production::NotEmpty(prod) = prodi {
-                graph_marking_for_rightside_elements(&prod, &mut follow_graph, &first_sets, name.clone())?
+                graph_marking_for_rightside_elements(&prod, &mut follow_graph, &first_sets, el_index,&parser_data)?
             }
         }
     }
     make_follow_sets_from_marked_graph(&mut follow_graph)
 }
 
-fn make_graph_with_index<T>(rules: &RuleMap<T>) -> Result<GraphNamedNodes<HashSet<SetMember>>, GraphError> where T:VM {
-    let mut follow_graph = GraphNamedNodes::<HashSet<SetMember>>::new();
+fn make_graph_with_index<T>(rules: &RuleMap<T>) -> Result<Graph, GrammarError> where T: VM {
+    let mut follow_graph = Graph::new();
     for (name, _) in rules.iter() {
-        follow_graph.add_node(String::from(name), HashSet::new())?;
+        follow_graph.add_node(*name, HashSet::new())?;
     }
     Ok(follow_graph)
 }
 
-fn make_follow_sets_from_marked_graph(follow_graph: &mut GraphNamedNodes<HashSet<SetMember>>) -> Result<NamedSetsNoEmpty, GraphError> {
+fn make_follow_sets_from_marked_graph(follow_graph: &mut Graph) -> Result<NamedSetsNoEmpty, GrammarError> {
     let mut follow_sets: NamedSetsNoEmpty = HashMap::new();
     let mut changes = true;
     while changes {
@@ -38,7 +45,7 @@ fn make_follow_sets_from_marked_graph(follow_graph: &mut GraphNamedNodes<HashSet
         let mut successor_indexes = vec![];
         for (name, node_index) in follow_graph.names.iter() {
             let node: &NodeData<HashSet<SetMember>> = follow_graph.get_node_by_index(*node_index)?;
-            let successors = follow_graph.successors(name).unwrap();
+            let successors = follow_graph.successors(*name).unwrap();
             for (successor_index, successor) in successors {
                 if !node.data.is_subset(&successor.data) {
                     changes = true;
@@ -57,25 +64,27 @@ fn make_follow_sets_from_marked_graph(follow_graph: &mut GraphNamedNodes<HashSet
     Ok(follow_sets)
 }
 
-fn graph_marking_for_rightside_elements(prod: &Vec<Element>, follow_graph: &mut GraphNamedNodes<HashSet<SetMember>>, first_sets: &NamedSets, left_side_name: String) -> Result<(), GraphError> {
+fn graph_marking_for_rightside_elements<T>(prod: &Vec<ElementIndex>, follow_graph: &mut Graph, first_sets: &NamedSets, left_side: ElementIndex, parser_data: &ParserData<T>)
+                                           -> Result<(), GrammarError> where T: VM {
     let der_len = prod.len();
-    for (i, element) in prod.iter().enumerate() {
-        if let ET::NonTerminal(name) = &element.el_type {
+    for (i, &el_index) in prod.iter().enumerate() {
+        let element=parser_data.get_element(el_index).ok_or(GrammarError::MissingElementForIndex { index:  el_index})?.et;
+        if let ElementType::NonTerminal = &element {
             let is_last_element = i >= der_len - 1;
             let mut add_edge = false;
             if is_last_element {
                 add_edge = true;
             } else {
-                let mut first_set_following = first_set_of_partial(&prod[i + 1..], first_sets);
+                let mut first_set_following = first_set_of_partial(&prod[i + 1..], first_sets, &parser_data)?;
                 let has_empty = first_set_following.contains(&SetMemberWithEmpty::Empty);
                 if has_empty {
                     first_set_following.remove(&SetMemberWithEmpty::Empty);
                     add_edge = true;
                 }
-                follow_graph.get_node_mut(name.as_str())?.data.extend(HashSet::<_>::from_iter(first_set_following.iter().map(|x| SetMember::try_from(*x).unwrap())));
+                follow_graph.get_node_mut(el_index)?.data.extend(HashSet::<_>::from_iter(first_set_following.iter().map(|x| SetMember::try_from(*x).unwrap())));
             }
             if add_edge {
-                follow_graph.add_edge(left_side_name.as_str(), name.as_str())?;
+                follow_graph.add_edge(left_side, el_index)?;
             }
         }
     }
@@ -83,18 +92,18 @@ fn graph_marking_for_rightside_elements(prod: &Vec<Element>, follow_graph: &mut 
 }
 
 
-
 #[cfg(test)]
 mod tests {
     use std::str::Chars;
+
     use peekables::PeekableWrapper;
-    use test_helpers::make_memberset;
     use vms::NullVm;
+
     use crate::first_sets::get_first_sets;
     use crate::rule_parsing::RuleParser;
     use crate::test_helpers::make_memberset_no_empty;
-    use super::*;
 
+    use super::*;
 
     #[test]
     fn test_follow_mengen() {
@@ -105,15 +114,16 @@ identifier2 -> \"b_terminal\"\
                | #;
 identifier3 -> \"c_terminal\"| #;
 ";
-        let mut peekable= PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
-        let mut vm=NullVm::new();
+        let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
+        let mut vm = NullVm::new();
         let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
-        let rules = &rule_parser.parse_rules().unwrap().rules;
-        let first_dict = get_first_sets( &rules).unwrap();
-        let follow_dict = get_follow_sets("start".to_string(), &rules, &first_dict).unwrap();
-        assert_eq!(make_memberset_no_empty("!"), follow_dict.get("start").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("c!"), follow_dict.get("identifier2").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("!"), follow_dict.get("identifier3").unwrap().clone());
+        rule_parser.parse_rules().expect("TODO: panic message");
+        let parser_data=rule_parser.parser_data;
+        let first_dict = get_first_sets(&parser_data).unwrap();
+        let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(), &first_dict, &parser_data).unwrap();
+        assert_eq!(make_memberset_no_empty("!"), follow_dict.get(&parser_data.get_element_nt_index("start").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("c!"), follow_dict.get(&parser_data.get_element_nt_index("identifier2").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("!"), follow_dict.get(&parser_data.get_element_nt_index("identifier3").unwrap()).unwrap().clone());
     }
 
     #[test]
@@ -123,15 +133,16 @@ identifier3 -> \"c_terminal\"| #;
             identifier2 -> \"b_terminal\" | #;
             identifier3 -> \"c_terminal\"| #;
 ";
-        let mut peekable= PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
-        let mut vm=NullVm::new();
+        let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
+        let mut vm = NullVm::new();
         let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
-        let rules = &rule_parser.parse_rules().unwrap().rules;
-        let first_dict = get_first_sets(&rules).unwrap();
-        let follow_dict = get_follow_sets("start".to_string(), &rules, &first_dict).unwrap();
-        assert_eq!(make_memberset_no_empty("!"), follow_dict.get("start").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("ac"), follow_dict.get("identifier2").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("a"), follow_dict.get("identifier3").unwrap().clone());
+        rule_parser.parse_rules().expect("TODO: panic message");
+        let parser_data=rule_parser.parser_data;
+        let first_dict = get_first_sets(&parser_data).unwrap();
+        let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(),  &first_dict,&parser_data).unwrap();
+        assert_eq!(make_memberset_no_empty("!"), follow_dict.get(&parser_data.get_element_nt_index("start").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("ac"), follow_dict.get(&parser_data.get_element_nt_index("identifier2").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("a"), follow_dict.get(&parser_data.get_element_nt_index("identifier3").unwrap()).unwrap().clone());
     }
 
     #[test]
@@ -146,19 +157,20 @@ identifier3 -> \"c_terminal\"| #;
             listt -> # | listelement listt;
             listelement -> \"g\" | \"h\";
 ";
-        let mut peekable= PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
-        let mut vm=NullVm::new();
+        let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
+        let mut vm = NullVm::new();
         let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
-        let rules = &rule_parser.parse_rules().unwrap().rules;
-        let first_dict = get_first_sets( &rules).unwrap();
-        let follow_dict = get_follow_sets("start".to_string(), &rules, &first_dict).unwrap();
-        assert_eq!(make_memberset_no_empty("!"), follow_dict.get("start").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("!"), follow_dict.get("identifier3").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("c!"), follow_dict.get("list").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("c!"), follow_dict.get("listt").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("c!gh"), follow_dict.get("listelement").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("c!gh"), follow_dict.get("liststart").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("lc!gh"), follow_dict.get("identifier2").unwrap().clone());
+        rule_parser.parse_rules().expect("TODO: panic message");
+        let parser_data=rule_parser.parser_data;
+        let first_dict = get_first_sets(&parser_data).unwrap();
+        let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(),  &first_dict,&parser_data).unwrap();
+        assert_eq!(make_memberset_no_empty("!"), follow_dict.get(&parser_data.get_element_nt_index("start").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("!"), follow_dict.get(&parser_data.get_element_nt_index("identifier3").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("c!"), follow_dict.get(&parser_data.get_element_nt_index("list").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("c!"), follow_dict.get(&parser_data.get_element_nt_index("listt").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("c!gh"), follow_dict.get(&parser_data.get_element_nt_index("listelement").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("c!gh"), follow_dict.get(&parser_data.get_element_nt_index("liststart").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("lc!gh"), follow_dict.get(&parser_data.get_element_nt_index("identifier2").unwrap()).unwrap().clone());
     }
 
     #[test]
@@ -169,15 +181,16 @@ identifier3 -> \"c_terminal\"| #;
             list_s -> l_element list_s| #;\
             l_element -> \"a\";\
 ";
-        let mut peekable= PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
-        let mut vm=NullVm::new();
+        let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
+        let mut vm = NullVm::new();
         let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
-        let rules = &rule_parser.parse_rules().unwrap().rules;
-        let first_dict = get_first_sets( &rules).unwrap();
-        let follow_dict = get_follow_sets("start".to_string(), &rules, &first_dict).unwrap();
-        assert_eq!(make_memberset_no_empty("!"), follow_dict.get("start").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("!"), follow_dict.get("list").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("!"), follow_dict.get("list_s").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("a!"), follow_dict.get("l_element").unwrap().clone());
+        rule_parser.parse_rules().expect("TODO: panic message");
+        let parser_data=rule_parser.parser_data;
+        let first_dict = get_first_sets(&parser_data).unwrap();
+        let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(),  &first_dict,&parser_data).unwrap();
+        assert_eq!(make_memberset_no_empty("!"), follow_dict.get(&parser_data.get_element_nt_index("start").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("!"), follow_dict.get(&parser_data.get_element_nt_index("list").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("!"), follow_dict.get(&parser_data.get_element_nt_index("list_s").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("a!"), follow_dict.get(&parser_data.get_element_nt_index("l_element").unwrap()).unwrap().clone());
     }
 }

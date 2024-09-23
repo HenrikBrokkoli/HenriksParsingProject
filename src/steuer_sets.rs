@@ -9,10 +9,10 @@ pub fn get_steuer_sets(first_sets: &NamedSets, follow_sets: &NamedSetsNoEmpty) -
     for (name, first) in first_sets.iter() {
         let mut steuer = HashSet::from_iter(first.iter().filter(|member| **member != SetMemberWithEmpty::Empty).map(|x| SetMember::try_from(*x).unwrap()));
         if first.contains(&SetMemberWithEmpty::Empty) {
-            let follow = follow_sets.get(name).ok_or(GrammarError::MissingFollowSet { name: String::from(name) })?;
+            let follow = follow_sets.get(name).ok_or(GrammarError::MissingFollowSet { index: *name})?;
             steuer.extend(follow);
         }
-        steuer_sets.insert(String::from(name), steuer);
+        steuer_sets.insert(*name, steuer);
     }
     Ok(steuer_sets)
 }
@@ -30,7 +30,7 @@ mod tests {
 
     #[test]
     fn test_steuer_sets() {
-        let mut rules =
+        let rules =
             "start      -> identifier1
             identifier2;\
             identifier1 -> \"a_terminal\"| #;
@@ -40,13 +40,14 @@ mod tests {
         let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rules.chars().peekable());
         let mut vm = NullVm::new();
         let mut parser = RuleParser::new(&mut peekable, &mut vm);
-        let rule_dict = &parser.parse_rules().unwrap().rules;
-        let first_dict = get_first_sets(rule_dict).unwrap();
-        let follow_dict = get_follow_sets("start".to_string(), rule_dict, &first_dict).unwrap();
+        let _rule_dict = &parser.parse_rules().unwrap().rules;
+        let parser_data=parser.parser_data;
+        let first_dict = get_first_sets(&parser_data).unwrap();
+        let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(),  &first_dict, &parser_data).unwrap();
         let steuer_dict = get_steuer_sets(&first_dict, &follow_dict).unwrap();
-        assert_eq!(make_memberset_no_empty("!ab"), steuer_dict.get("start").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("ab!"), steuer_dict.get("identifier1").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("b!"), steuer_dict.get("identifier2").unwrap().clone());
+        assert_eq!(make_memberset_no_empty("!ab"), steuer_dict.get(&parser_data.get_element_nt_index("start").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("ab!"), steuer_dict.get(&parser_data.get_element_nt_index("identifier1").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("b!"), steuer_dict.get(&parser_data.get_element_nt_index("identifier2").unwrap()).unwrap().clone());
     }
 
 
@@ -61,14 +62,14 @@ mod tests {
 
         let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rules.chars().peekable());
         let mut vm = NullVm::new();
-        let mut parser = RuleParser::new(&mut peekable, &mut vm);
-        let rule_dict = &parser.parse_rules().unwrap().rules;
-        let first_dict = get_first_sets(&rule_dict).unwrap();
-        let follow_dict = get_follow_sets("start".to_string(), &rule_dict, &first_dict).unwrap();
+        let parser = RuleParser::new(&mut peekable, &mut vm);
+        let parser_data=parser.parser_data;
+        let first_dict = get_first_sets(&parser_data).unwrap();
+        let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(),  &first_dict, &parser_data).unwrap();
         let steuer_dict = get_steuer_sets(&first_dict, &follow_dict).unwrap();
-        assert_eq!(make_memberset_no_empty("a"), steuer_dict.get("list").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("a!"), steuer_dict.get("list_s").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("a"), steuer_dict.get("element").unwrap().clone());
+        assert_eq!(make_memberset_no_empty("a"), steuer_dict.get(&parser_data.get_element_nt_index("list").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("a!"), steuer_dict.get(&parser_data.get_element_nt_index("list_s").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("a"), steuer_dict.get(&parser_data.get_element_nt_index("element").unwrap()).unwrap().clone());
     }
 
     #[test]
@@ -83,16 +84,16 @@ mod tests {
 
         let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rules.chars().peekable());
         let mut vm = NullVm::new();
-        let mut parser = RuleParser::new(&mut peekable, &mut vm);
-        let rule_dict = &parser.parse_rules().unwrap().rules;
-        let first_dict = get_first_sets(&rule_dict).unwrap();
-        let follow_dict = get_follow_sets("start".to_string(), &rule_dict, &first_dict).unwrap();
+        let parser = RuleParser::new(&mut peekable, &mut vm);
+        let parser_data=parser.parser_data;
+        let first_dict = get_first_sets(&parser_data).unwrap();
+        let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(),  &first_dict, &parser_data).unwrap();
         let steuer_dict = get_steuer_sets(&first_dict, &follow_dict).unwrap();
-        assert_eq!(make_memberset_no_empty("a"), steuer_dict.get("list").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("ae"), steuer_dict.get("list_s").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("a"), steuer_dict.get("element").unwrap().clone());
+        assert_eq!(make_memberset_no_empty("a"), steuer_dict.get(&parser_data.get_element_nt_index("list").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("ae"), steuer_dict.get(&parser_data.get_element_nt_index("list_s").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("a"), steuer_dict.get(&parser_data.get_element_nt_index("element").unwrap()).unwrap().clone());
 
-        assert_eq!(make_memberset_no_empty("ae"), steuer_dict.get("optional_list").unwrap().clone());
+        assert_eq!(make_memberset_no_empty("ae"), steuer_dict.get(&parser_data.get_element_nt_index("optional_list").unwrap()).unwrap().clone());
     }
 
 
@@ -123,21 +124,20 @@ whitespace -> \" \";";
 
         let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
         let mut vm = NullVm::new();
-        let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
-        let rules = &rule_parser.parse_rules().unwrap().rules;
+        let parser = RuleParser::new(&mut peekable, &mut vm);
+        let parser_data=parser.parser_data;
 
-
-        let first_dict = get_first_sets(rules).unwrap();
-        let follow_dict = get_follow_sets("start".to_string(), rules, &first_dict).unwrap();
+        let first_dict = get_first_sets(&parser_data).unwrap();
+        let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(),  &first_dict, &parser_data).unwrap();
         let steuer_dict = get_steuer_sets(&first_dict, &follow_dict).unwrap();
-        assert_eq!(make_memberset_no_empty("p+-0123456789"), steuer_dict.get("start").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("p+-0123456789! "), steuer_dict.get("terms_s").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("p+-0123456789"), steuer_dict.get("term").unwrap().clone());
+        assert_eq!(make_memberset_no_empty("p+-0123456789"), steuer_dict.get(&parser_data.get_element_nt_index("start").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("p+-0123456789! "), steuer_dict.get(&parser_data.get_element_nt_index("terms_s").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("p+-0123456789"), steuer_dict.get(&parser_data.get_element_nt_index("term").unwrap()).unwrap().clone());
 
-        assert_eq!(make_memberset_no_empty("0123456789"), steuer_dict.get("number").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("0123456789p+- "), steuer_dict.get("number_s").unwrap().clone());
-        assert_eq!(make_memberset_no_empty("0123456789"), steuer_dict.get("digit").unwrap().clone());
-        assert_eq!(make_memberset_no_empty(" "), steuer_dict.get("whitespaces").unwrap().clone());
+        assert_eq!(make_memberset_no_empty("0123456789"), steuer_dict.get(&parser_data.get_element_nt_index("number").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("0123456789p+- "), steuer_dict.get(&parser_data.get_element_nt_index("number_s").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty("0123456789"), steuer_dict.get(&parser_data.get_element_nt_index("digit").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset_no_empty(" "), steuer_dict.get(&parser_data.get_element_nt_index("whitespaces").unwrap()).unwrap().clone());
     }
 }
 

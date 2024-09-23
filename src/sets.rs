@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fmt;
+use parser_data::{Element, ElementIndex};
 
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
@@ -57,8 +58,8 @@ impl Into<String> for SetMember{
 
 
 pub type HashMapOfSets<Ta, Tb> = HashMap<Ta, HashSet<Tb>>;
-pub type NamedSets = HashMapOfSets<String, SetMemberWithEmpty>;
-pub type NamedSetsNoEmpty = HashMapOfSets<String, SetMember>;
+pub type NamedSets = HashMapOfSets<ElementIndex, SetMemberWithEmpty>;
+pub type NamedSetsNoEmpty = HashMapOfSets<ElementIndex, SetMember>;
 
 
 impl TryFrom<SetMemberWithEmpty> for SetMember {

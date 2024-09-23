@@ -19,8 +19,8 @@ fn main() {
     //Put 1 on the stack, put two on the stack, take top two elements from stack (1 and 2) and add them and put the result on the stack
     //Then add three and then substract for.
     //Then print out the top element on the stack
-    let script="1 2 + 3 + 4 - print";
-    let graph = parser.parse(&script,&mut state).unwrap();
+    let script="15 2 + 3 + 4 - print";
+    let _ = parser.parse(&script,&mut state).unwrap();
     //You should the see printed out result
 
     println!("ok")
