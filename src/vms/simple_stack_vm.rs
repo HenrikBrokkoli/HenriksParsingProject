@@ -13,7 +13,6 @@ impl VM for SimpleStackVm {
     type Tstate = SimpleStackVmState;
     fn make_instruction<T>(&self, prod_name: &str, to_parse: &mut ParseProcess<T>)
                            -> Result<Box<Instruction<Self::Tstate>>, String> where T: TPeekable<Item=char> {
-        //TODO: to_parse is not handled right. Works for the example but will not work when user puts something in curly braces
         let mut c = to_parse.next();
         while let Some(_cc) = c {
             c = to_parse.next()
