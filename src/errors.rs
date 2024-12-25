@@ -2,8 +2,7 @@ use std::fmt;
 
 use parser_data::ElementIndex;
 use tree::TreeError;
-use crate::errors::GrammarError::{MissingElementForIndex, MissingFirstSet, MissingFollowSet, MissingProduction, MissingSteuerSet};
-use crate::errors::ParserError::{EndOfCharsError, UnexpectedCharError, UnknownSpecialOperation};
+
 
 #[derive(Debug)]
 pub enum ParserError {
@@ -22,10 +21,14 @@ impl std::error::Error for ParserError {}
 impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            UnexpectedCharError { chr, pos, expected } => write!(f, " \"{}\" at pos {} was not expected. Expected {}", chr, pos, expected),
-            EndOfCharsError => write!(f, "There was a char expected but there was none"),
-            UnexpectedElementError => write!(f, "Unexpected Element"),
-            UnknownSpecialOperation { operation, pos } => write!(f, " \"{}\" at pos {} was not expected", operation, pos),
+            ParserError::UnexpectedCharError { chr, pos, expected } => write!(f, " \"{}\" at pos {} was not expected. Expected {}", chr, pos, expected),
+            ParserError::EndOfCharsError => write!(f, "There was a char expected but there was none"),
+            ParserError::UnknownSpecialOperation { operation, pos } => write!(f, " \"{}\" at pos {} was not expected", operation, pos),
+            ParserError::GramError { .. } => write!(f, "There was a Grammar error"),
+            ParserError::Impossible => write!(f,"This error should not be possible"),
+            ParserError::InternalError { .. } => write!(f, "There was an internal error"),
+            ParserError::VmError { .. } => write!(f, "There was a VM error"),
+            ParserError::TreeError { .. } => write!(f, "There was a treeerror"),
         }
     }
 }
@@ -60,13 +63,16 @@ impl std::error::Error for GrammarError {}
 impl fmt::Display for GrammarError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            MissingFollowSet { index } => write!(f, " \"{}\" has no followset", index),
-            MissingElementForIndex { index } => write!(f, " \"{}\" has no entry in elements", index),
-            MissingFirstSet { index } => write!(f, " \"{}\" has no firstset", index),
-            MissingSteuerSet { index } => write!(f, " \"{}\" has no steuerset", index),
-            MissingProduction { index } => write!(f, " \"{}\" not in productions", index),
-            SteuerSetsNotDistinct => write!(f, "steuersets not distinct"),
-            UnexpectedElementError => write!(f, "Unexpected Element"),
+            GrammarError::MissingFollowSet { index } => write!(f, " \"{}\" has no followset", index),
+            GrammarError::MissingElementForIndex { index } => write!(f, " \"{}\" has no entry in elements", index),
+            GrammarError::MissingFirstSet { index } => write!(f, " \"{}\" has no firstset", index),
+            GrammarError::MissingSteuerSet { index } => write!(f, " \"{}\" has no steuerset", index),
+            GrammarError::MissingProduction { index } => write!(f, " \"{}\" not in productions", index),
+            GrammarError::SteuerSetsNotDistinct{ .. } => write!(f, "steuersets not distinct"),
+            GrammarError::UnexpectedElementError { reason, pos } => write!(f, " \"{}\" at pos {} was not expected", reason, pos),
+            GrammarError::GraphNodeAlreadyExistsError { .. } => write!(f, "graph node already exists"),
+            GrammarError::GraphNodeDoesNotExistsError { .. } => write!(f, "graph node doesn't exists"),
+            GrammarError::GraphIndexOutOfBounds { .. } => write!(f, "graph node index out of bounds"),
         }
     }
 }

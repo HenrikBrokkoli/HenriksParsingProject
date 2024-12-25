@@ -1,7 +1,6 @@
 use simple_graph::NodeIndex;
 use std::fmt;
 use tree::TreeError::{ChildDoesNotExists, NodeDoesNotExists, NodeWasRemoved};
-use ::tree;
 
 pub type NodeId = usize;
 

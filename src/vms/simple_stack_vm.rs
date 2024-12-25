@@ -1,5 +1,4 @@
 use peekables::{ParseProcess, TPeekable};
-use simple_graph::Graph;
 use tree::{NodeId, Tree};
 use vms::{Instruction, VM};
 
@@ -7,7 +6,6 @@ use vms::{Instruction, VM};
 pub struct SimpleStackVmState {
     pub stack: Vec<usize>,
 }
-
 
 pub struct SimpleStackVm {}
 
@@ -21,20 +19,20 @@ impl VM for SimpleStackVm {
             c = to_parse.next()
         }
         let instruction = match prod_name {
-            "add" => |tree: &mut Tree<String>,cur_node:NodeId, state: &mut Self::Tstate| {
+            "add" => |_tree: &mut Tree<String>,_cur_node:NodeId, state: &mut Self::Tstate| {
                 let res = state.stack.pop().unwrap() + state.stack.pop().unwrap();
                 state.stack.push(res);
 
                 Ok(())
             },
-            "sub" => |tree: &mut Tree<String>,cur_node:NodeId, state: &mut Self::Tstate| {
+            "sub" => |_tree: &mut Tree<String>,_cur_node:NodeId, state: &mut Self::Tstate| {
                 let second = state.stack.pop().unwrap();
                 let res = state.stack.pop().unwrap() - second;
                 state.stack.push(res);
                 Ok(())
             },
-            "number" =>  |tree: &mut Tree<String>,cur_node:NodeId, state: &mut Self::Tstate| {
-                let e= state.stack.pop().unwrap();
+            "number" =>  |_tree: &mut Tree<String>,_cur_node:NodeId, state: &mut Self::Tstate| {
+                let _= state.stack.pop().unwrap();
                 Ok(())
             },
             "digit" =>  |tree: &mut Tree<String>,cur_node:NodeId, state: &mut Self::Tstate| {
@@ -43,7 +41,7 @@ impl VM for SimpleStackVm {
                 state.stack.push(1);
                 Ok(())
             },
-            "number_s_" =>  |tree: &mut Tree<String>,cur_node:NodeId, state: &mut Self::Tstate| {
+            "number_s_" =>  |_tree: &mut Tree<String>,_cur_node:NodeId, state: &mut Self::Tstate| {
                 let e= state.stack.pop().unwrap();
                 let digit = state.stack.pop().unwrap();
                 let _= state.stack.pop().unwrap();
@@ -54,12 +52,12 @@ impl VM for SimpleStackVm {
                 state.stack.push(e+1);
                 Ok(())
             },
-            "print" =>  |tree: &mut Tree<String>,cur_node:NodeId, state: &mut Self::Tstate| {
+            "print" =>  |_tree: &mut Tree<String>,_cur_node:NodeId, state: &mut Self::Tstate| {
                 let digit = state.stack.pop().unwrap();
                 println!("stack last item:{digit}");
                 Ok(())
             },
-            _ =>  |_tree: &mut Tree<String>,cur_node:NodeId, _state: &mut Self::Tstate| {
+            _ =>  |_tree: &mut Tree<String>,_cur_node:NodeId, _state: &mut Self::Tstate| {
                 Ok(())
             }
         };

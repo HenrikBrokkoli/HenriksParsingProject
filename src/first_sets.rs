@@ -1,11 +1,9 @@
 use crate::errors::GrammarError;
 use parser_data::{ElementIndex, ElementType, ParserData, Production};
-use peekables::PeekableWrapper;
 use std::collections::{HashMap, HashSet};
-use std::str::Chars;
 
 use crate::sets::{NamedSets, SetMemberWithEmpty};
-use crate::vms::{NullVm, VM};
+use crate::vms::VM;
 
 ///Computes the first set of a slice of elements. Usually used to get the first set of a partial right side of a production.
 /// # Arguments

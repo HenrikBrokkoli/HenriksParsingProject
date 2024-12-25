@@ -1,5 +1,4 @@
 use peekables::{ParseProcess, TPeekable};
-use simple_graph::Graph;
 use tree::{NodeId, Tree};
 
 pub mod counting_vm;
@@ -42,7 +41,7 @@ impl NullVm {
 impl VM for NullVm {
     type Tstate = usize;
 
-    fn make_instruction<'a, T>(&'a self, prod_name: &str, to_parse: &mut ParseProcess<T>) -> Result<Box<Instruction<usize>>, String> where T: TPeekable<Item=char> {
+    fn make_instruction<'a, T>(&'a self, _prod_name: &str, to_parse: &mut ParseProcess<T>) -> Result<Box<Instruction<usize>>, String> where T: TPeekable<Item=char> {
         let mut c = to_parse.next();
         while let Some(_cc) = c {
             c = to_parse.next()

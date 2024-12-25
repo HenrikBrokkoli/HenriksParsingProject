@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::fmt;
-use std::process::id;
 use std::rc::Rc;
 use std::str::Chars;
 use peekables::{ParseProcess, PeekableWrapper};
