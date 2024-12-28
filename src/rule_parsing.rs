@@ -13,7 +13,7 @@ use crate::errors::ParserError::{EndOfCharsError, UnexpectedCharError};
 use crate::parse_funcs::{parse_symbol, parse_var_name, parse_whitespace};
 use crate::peekables::{ParseProcess, PeekableWrapper, TPeekable};
 
-//use crate::virtual_machine::{VirtualMachine};
+
 
 
 pub struct RuleParser<'vm, 'pp, T> where T: VM + 'vm {
@@ -39,7 +39,7 @@ impl<'vm, 'pp, T> RuleParser<'vm, 'pp, T> where T: VM + 'vm {
     pub fn parse_rules(&mut self) -> Result<&ParseRules<T>, ParserError> {
         self.parse_special()?;
         loop {
-            parse_whitespace(&mut self.parse_process);
+            self.parse_whitespace();
             if self.parse_process.peek().is_none() {
                 break;
             }
@@ -51,12 +51,12 @@ impl<'vm, 'pp, T> RuleParser<'vm, 'pp, T> where T: VM + 'vm {
     }
 
     fn parse_special(&mut self) -> Result<(), ParserError> {
-        if parse_symbol(&mut self.parse_process, '$').is_ok() {
+        if self.parse_symbol( '$').is_ok() {
             let special_instruction = parse_var_name(&mut self.parse_process)?;
-            parse_symbol(&mut self.parse_process, ':')?;
-            parse_whitespace(&mut self.parse_process);
+            self.parse_symbol( ':')?;
+            self.parse_whitespace();
             if special_instruction == "IGNORE" {
-                if parse_symbol(&mut self.parse_process, '#').is_ok() {
+                if self.parse_symbol('#').is_ok() {
                     self.parser_data.parse_rules.ignore = None
                 } else {
                     let ignore_name = parse_var_name(&mut self.parse_process)?;
@@ -64,7 +64,7 @@ impl<'vm, 'pp, T> RuleParser<'vm, 'pp, T> where T: VM + 'vm {
                     self.parser_data.parse_rules.ignore = Some(key);
                 }
             } else { return Err(ParserError::UnknownSpecialOperation { operation: special_instruction, pos: self.parse_process.cur_pos() }); }
-            parse_symbol(&mut self.parse_process, ';')?;
+            self.parse_symbol( ';')?;
         };
 
         Ok(())
@@ -124,26 +124,24 @@ impl<'vm, 'pp, T> RuleParser<'vm, 'pp, T> where T: VM + 'vm {
             self.parser_data.parse_rules.rules.insert(rule_key, rule);
         }
     }
-    
+
     pub fn parse_rule(&mut self) -> Result<(ElementIndex, NonTerminalRules<T>), ParserError> {
         let identifier = parse_var_name(&mut self.parse_process)?;
 
         let key = self.parser_data.get_or_add_element_key(&ElementVerbose::new(identifier.clone(),ElementType::NonTerminal));
 
-        parse_whitespace(&mut self.parse_process);
-        parse_symbol(&mut self.parse_process, '-')?;
-        parse_symbol(&mut self.parse_process, '>')?;
-        parse_whitespace(&mut self.parse_process);
+        self.parse_whitespace();
+        self.parse_symbol( '-')?;
+        self.parse_symbol('>')?;
+        self.parse_whitespace();
         let ignore_this_maybe = self.parse_overrides()?;
         let productions: PossibleProductions = self.parse_possible_productions()?;
         let instruction = self.parse_instruction_section(&identifier)?;
-        parse_whitespace(&mut self.parse_process);
-        parse_symbol(&mut self.parse_process, ';')?;
+        self.parse_whitespace();
+        self.parse_symbol(';')?;
         let nt_rules = NonTerminalRules::<T> { possible_productions: productions, ignore: ignore_this_maybe, instruction };
         Ok((key, nt_rules))
     }
-
-
     fn weave_in_ignorers(&self, rule: &NonTerminalRules<T>, ignore: ElementIndex) -> Vec<Rc<Production>> {
         let mut weaved_productions = vec![];
         for production in rule.possible_productions.iter() {
@@ -173,53 +171,51 @@ impl<'vm, 'pp, T> RuleParser<'vm, 'pp, T> where T: VM + 'vm {
         }
     }
 
+
     fn parse_overrides(&mut self) -> Result<Option<ElementIndex>, ParserError> {
         let mut ignore_this = self.parser_data.parse_rules.ignore.clone();
-        if parse_symbol(&mut self.parse_process, '$').is_ok() {
-            parse_symbol(&mut self.parse_process, '[')?;
+        if self.parse_symbol( '$').is_ok() {
+            self.parse_symbol( '[')?;
             let varname = parse_var_name(&mut self.parse_process)?;
-            parse_whitespace(&mut self.parse_process);
-            parse_symbol(&mut self.parse_process, ':')?;
+            self.parse_whitespace();
+            self.parse_symbol( ':')?;
 
 
             if varname == "IGNORE" {
-                if parse_symbol(&mut self.parse_process, '#').is_ok() {
+                if self.parse_symbol( '#').is_ok() {
                     ignore_this = None;
                 } else {
                     ignore_this = Some(self.parser_data.get_or_add_element_key(&ElementVerbose::new(parse_var_name(&mut self.parse_process)?,ElementType::NonTerminal)));
                 }
             }
 
-            parse_symbol(&mut self.parse_process, ']')?;
+            self.parse_symbol(']')?;
         };
 
         Ok(ignore_this)
     }
 
     fn parse_instruction_section(&mut self, prod_name: &str) -> Result<Option<Box<Instruction<T::Tstate>>>, ParserError> {
-        match parse_symbol(&mut self.parse_process, '{') {
+        match self.parse_symbol( '{') {
             Ok(_) => {}
             Err(_) => { return Ok(None); }
         };
-        parse_whitespace(&mut self.parse_process);
-
-        let mut g = ParseProcess::new(&mut self.parse_process, Some('}'), Some('\\'));
-        let instruction = self.vm.make_instruction(prod_name, &mut g);
-        parse_symbol(&mut self.parse_process, '}')?;
-        match instruction {
-            Ok(instr) => Ok(Some(instr)),
-            Err(msg) => Err(ParserError::VmError { message: msg })
-        }
+        self.parse_whitespace();
+        let cur_pos=self.parse_process.cur_pos();
+        let mut g = ParseProcess::new_nested(&mut self.parse_process, Some('}'), Some('\\'),cur_pos);
+        let instruction = self.vm.make_instruction(prod_name, &mut g)?;
+        self.parse_symbol('}')?;
+        Ok(Some(instruction))
     }
 
     pub fn parse_possible_productions(&mut self) -> Result<PossibleProductions, ParserError> {
         let mut elements = vec![self.parse_production()?];
         loop {
-            parse_whitespace(&mut self.parse_process);
-            let _ = parse_symbol(&mut self.parse_process, '\n');
-            parse_whitespace(&mut self.parse_process);
-            if parse_symbol(&mut self.parse_process, '|').is_ok() {
-                parse_whitespace(&mut self.parse_process);
+            self.parse_whitespace();
+            let _ = self.parse_symbol( '\n');
+            self.parse_whitespace();
+            if self.parse_symbol( '|').is_ok() {
+                self.parse_whitespace();
                 elements.push(self.parse_production()?);
             } else {
                 break;
@@ -267,6 +263,14 @@ impl<'vm, 'pp, T> RuleParser<'vm, 'pp, T> where T: VM + 'vm {
             Some(x) => Err(UnexpectedCharError { chr: *x, pos: to_parse.cur_pos(), expected: String::from("char # for empty, \" for terminal ort alphabetic for element") }),
             _ => Err(EndOfCharsError)
         }
+    }
+
+    fn parse_symbol(&mut self, sym:char)-> Result<(), ParserError> {
+        parse_symbol(&mut self.parse_process, sym)
+    }
+
+    fn parse_whitespace(&mut self) {
+        parse_whitespace(&mut self.parse_process);
     }
 }
 

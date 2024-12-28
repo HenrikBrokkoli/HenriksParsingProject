@@ -12,9 +12,10 @@ impl CountingVm {
 
 impl VM for CountingVm {
     type Tstate = usize;
+    type Tinstrution = usize;
 
 
-    fn make_instruction<T>(&self,_prod_name:&str, _to_parse: &mut ParseProcess<T>) -> Result<Box<Instruction<Self::Tstate>>, String> where T: TPeekable<Item=char> {
+    fn make_instruction<T>(&self, _prod_name:&str, _to_parse: &mut ParseProcess<T>) -> Result<Self::Tinstrution, String> where T: TPeekable<Item=char> {
         Ok(Box::new(move |_graph,_id, state| CountingVm::increment_counter(state)))
     }
 

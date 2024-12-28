@@ -65,6 +65,11 @@ impl<'a, T> ParseProcess<'a,  T> where T: TPeekable<Item=char>  {
     pub fn new(peekable: &mut T, stop_on:Option<char>,escape_char:Option<char>) -> ParseProcess< T> {
         ParseProcess { to_parse: peekable, current_position: 0, stop_on,escape_char, escape: false }
     }
+    
+    pub fn new_nested(peekable: &mut T, stop_on:Option<char>,escape_char:Option<char>, global_position:usize) -> ParseProcess< T> {
+        
+        ParseProcess { to_parse: peekable, current_position: global_position, stop_on,escape_char, escape: false }
+    }
     pub fn cur_pos(&self) -> usize {
         self.current_position
     }

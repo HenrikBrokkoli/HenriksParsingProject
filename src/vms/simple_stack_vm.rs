@@ -1,3 +1,4 @@
+use errors::ParserError;
 use peekables::{ParseProcess, TPeekable};
 use tree::{NodeId, Tree};
 use vms::{Instruction, VM};
@@ -12,7 +13,7 @@ pub struct SimpleStackVm {}
 impl VM for SimpleStackVm {
     type Tstate = SimpleStackVmState;
     fn make_instruction<T>(&self, prod_name: &str, to_parse: &mut ParseProcess<T>)
-                           -> Result<Box<Instruction<Self::Tstate>>, String> where T: TPeekable<Item=char> {
+                           -> Result<Box<Instruction<Self::Tstate>>, ParserError> where T: TPeekable<Item=char> {
         let mut c = to_parse.next();
         while let Some(_cc) = c {
             c = to_parse.next()
