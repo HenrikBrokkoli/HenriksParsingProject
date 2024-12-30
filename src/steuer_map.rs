@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use parser_data::{ElementData, ElementIndex, ElementType, ParserData};
-use vms::{Instruction, VM};
+use vms::VM;
 
 use crate::errors::GrammarError;
 use crate::errors::GrammarError::{MissingFollowSet, MissingSteuerSet, SteuerSetsNotDistinct};
@@ -11,17 +11,16 @@ use crate::sets::{NamedSets, NamedSetsNoEmpty, SetMember};
 use crate::steuer_sets::get_steuer_sets;
 
 /// Forgot what NT means here. NonTerminal?
-pub struct NTRules<T> {
+pub struct NTRules<T> where T:VM{
     pub steuermap: Steuermap,
     pub ignore: Option<ElementIndex>,
-    pub instruction: Option<Box<Instruction<T>>>,
+    pub instruction: Vec<T::Tinstrution>,
 }
 
 pub type Steuermap = HashMap<SetMember, Rc<Production>>;
 
-pub fn get_steuermaps<T>(first_sets: &NamedSets, follow_sets: &NamedSetsNoEmpty, parser_data: ParserData<T>) -> Result<HashMap<ElementIndex, NTRules<T::Tstate>>, GrammarError>
-where
-    T: VM,
+pub fn get_steuermaps<T>(first_sets: &NamedSets, follow_sets: &NamedSetsNoEmpty, parser_data: ParserData<T>) -> Result<HashMap<ElementIndex, NTRules<T>>, GrammarError>
+where T: VM,
 {
     let steuer_sets = get_steuer_sets(first_sets, follow_sets)?;
     let mut steuer_maps = HashMap::new();

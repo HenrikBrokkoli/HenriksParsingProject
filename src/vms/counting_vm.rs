@@ -1,5 +1,7 @@
+use errors::ParserError;
 use peekables::{ParseProcess, TPeekable};
-use vms::{Instruction, VM};
+use tree::{NodeId, Tree};
+use vms::VM;
 
 pub struct CountingVm {}
 
@@ -15,8 +17,12 @@ impl VM for CountingVm {
     type Tinstrution = usize;
 
 
-    fn make_instruction<T>(&self, _prod_name:&str, _to_parse: &mut ParseProcess<T>) -> Result<Self::Tinstrution, String> where T: TPeekable<Item=char> {
-        Ok(Box::new(move |_graph,_id, state| CountingVm::increment_counter(state)))
+    fn parse_instructions<T>(&self, _prod_name:&str, _to_parse: &mut ParseProcess<T>) -> Result<Vec<Self::Tinstrution>, ParserError> where T: TPeekable<Item=char> {
+        Ok(vec![0])
+    }
+
+    fn execute_instruction(&self, tree:&mut Tree<String>, cur_node: NodeId,instruction: &Self::Tinstrution, state: &mut usize) {
+        CountingVm::increment_counter(state).unwrap()
     }
 
     fn create_new_state() -> Self::Tstate {

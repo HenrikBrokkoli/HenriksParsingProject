@@ -1,70 +1,154 @@
 use errors::ParserError;
 use peekables::{ParseProcess, TPeekable};
 use tree::{NodeId, Tree};
-use vms::{Instruction, VM};
-
+use vms::VM;
 
 pub struct SimpleStackVmState {
     pub stack: Vec<usize>,
+    pub reg: usize,
+    pub reg2: usize,
+    pub error: usize,
+}
+
+pub enum Instruction {
+    Add,
+    RegAddConst(usize),
+    Sub,
+    Digit,
+    PopToReg,
+    PopToReg2,
+    PopDiscard,
+    PushConst(usize),
+    PushFromTree,
+    PushReg,
+    PushReg2,
+    PrintReg,
+    PrintReg2,
+    PrintError,
+    Pow(usize)
 }
 
 pub struct SimpleStackVm {}
 
 impl VM for SimpleStackVm {
     type Tstate = SimpleStackVmState;
-    fn make_instruction<T>(&self, prod_name: &str, to_parse: &mut ParseProcess<T>)
-                           -> Result<Box<Instruction<Self::Tstate>>, ParserError> where T: TPeekable<Item=char> {
+    type Tinstrution = Instruction;
+    fn parse_instructions<T>(
+        &self,
+        prod_name: &str,
+        to_parse: &mut ParseProcess<T>,
+    ) -> Result<Vec<Self::Tinstrution>, ParserError>
+    where
+        T: TPeekable<Item = char>,
+    {
         let mut c = to_parse.next();
         while let Some(_cc) = c {
             c = to_parse.next()
         }
         let instruction = match prod_name {
-            "add" => |_tree: &mut Tree<String>,_cur_node:NodeId, state: &mut Self::Tstate| {
-                let res = state.stack.pop().unwrap() + state.stack.pop().unwrap();
-                state.stack.push(res);
-
-                Ok(())
-            },
-            "sub" => |_tree: &mut Tree<String>,_cur_node:NodeId, state: &mut Self::Tstate| {
-                let second = state.stack.pop().unwrap();
-                let res = state.stack.pop().unwrap() - second;
-                state.stack.push(res);
-                Ok(())
-            },
-            "number" =>  |_tree: &mut Tree<String>,_cur_node:NodeId, state: &mut Self::Tstate| {
-                let _= state.stack.pop().unwrap();
-                Ok(())
-            },
-            "digit" =>  |tree: &mut Tree<String>,cur_node:NodeId, state: &mut Self::Tstate| {
-                let digit_string= tree.get_by_path_or_none(cur_node, vec![0].into_iter()).unwrap().unwrap();
-                state.stack.push(digit_string.data.parse::<usize>().unwrap());
-                state.stack.push(1);
-                Ok(())
-            },
-            "number_s_" =>  |_tree: &mut Tree<String>,_cur_node:NodeId, state: &mut Self::Tstate| {
-                let e= state.stack.pop().unwrap();
-                let digit = state.stack.pop().unwrap();
-                let _= state.stack.pop().unwrap();
-                let prev_digit = state.stack.pop().unwrap();
-                let base :usize= 10;
-                let res = prev_digit * base.pow(e as u32)  + digit;
-                state.stack.push(res);
-                state.stack.push(e+1);
-                Ok(())
-            },
-            "print" =>  |_tree: &mut Tree<String>,_cur_node:NodeId, state: &mut Self::Tstate| {
-                let digit = state.stack.pop().unwrap();
-                println!("stack last item:{digit}");
-                Ok(())
-            },
-            _ =>  |_tree: &mut Tree<String>,_cur_node:NodeId, _state: &mut Self::Tstate| {
-                Ok(())
-            }
+            "add" => vec![Instruction::PopToReg, Instruction::Add],
+            "sub" => vec![Instruction::PopToReg, Instruction::Sub],
+            "number" => vec![Instruction::PopDiscard],
+            "digit" => vec![Instruction::PushFromTree,Instruction::PushConst(1)],
+            "number_s_" => vec![Instruction::PopToReg, Instruction::PopToReg2, Instruction::PopDiscard, Instruction::Pow(10),Instruction::RegAddConst(1),Instruction::PushReg],
+            "print" => vec![Instruction::PopToReg, Instruction::PrintReg],
+            _ =>  vec![],
         };
-        Ok(Box::new(instruction))
+        Ok(instruction)
+    }
+
+    fn execute_instruction(
+        &self,
+        tree: &mut Tree<String>,
+        cur_node: NodeId,
+        instruction: &Self::Tinstrution,
+        state: &mut Self::Tstate,
+    ) {
+        match instruction {
+            Instruction::Add => {
+                if let Some(var) = state.stack.pop() {
+                    let res = state.reg + var;
+                    state.stack.push(res);
+                } else {
+                    state.error = 1
+                }
+            }
+            Instruction::Sub => {
+                if let Some(var) = state.stack.pop() {
+                    let res =  var - state.reg;
+                    state.stack.push(res);
+                } else {
+                    state.error = 1
+                }
+            }
+
+            Instruction::Digit => {}
+            Instruction::PopToReg => {
+                if let Some(res) = state.stack.pop() {
+                    state.reg = res;
+                } else {
+                    state.error = 1
+                }
+            }
+            Instruction::PopToReg2 => {
+                if let Some(res) = state.stack.pop() {
+                    state.reg2 = res;
+                } else {
+                    state.error = 1
+                }
+            }
+            Instruction::PushConst(c) => {
+                state.stack.push(*c);
+            }
+            Instruction::PushFromTree => {
+                if let Some(node) = tree
+                    .get_by_path_or_none(cur_node, vec![0].into_iter())
+                    .ok()
+                    .flatten()
+                {
+                    if let Ok(value) = node.data.parse::<usize>() {
+                        state.stack.push(value);
+                    } else {
+                        state.error = 2; // Parsing error
+                    }
+                } else {
+                    state.error = 1; // Node not found or other error
+                }
+            }
+            Instruction::PopDiscard => {
+                if let Some(res) = state.stack.pop() {
+                    _ = res;
+                } else {
+                    state.error = 1
+                }
+            },
+            Instruction::PrintReg => {
+                let reg= state.reg;
+                println!("{reg}");
+            }
+            Instruction::PrintReg2 => {
+                let reg= state.reg2;
+                println!("{reg}");
+            }
+            Instruction::PrintError => {
+                let reg= state.error;
+                println!("{reg}");
+            }
+            Instruction::Pow(base) => {
+                if let Some(val)=state.stack.pop(){
+                    let res = val * base.pow(state.reg as u32) + state.reg2;
+                    state.stack.push(res);
+                }else { state.error = 1 }
+            }
+            Instruction::PushReg => {state.stack.push(state.reg)}
+            Instruction::PushReg2 => {state.stack.push(state.reg2)}
+            Instruction::RegAddConst(c) => {
+                state.reg= state.reg + c;
+            }
+        }
     }
 
     fn create_new_state() -> Self::Tstate {
-        SimpleStackVmState { stack: vec![] }
+        SimpleStackVmState { stack: vec![],reg:0,reg2:0,error:0 }
     }
 }

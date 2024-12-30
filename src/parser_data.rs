@@ -3,8 +3,7 @@ use std::fmt;
 use std::rc::Rc;
 use std::str::Chars;
 use peekables::{ParseProcess, PeekableWrapper};
-use vms::{Instruction, VM};
-
+use vms::VM;
 
 ///Contains the ParseRules, the vector of elements and a Hashmap of ElementData
 pub struct ParserData<T> where T: VM {
@@ -130,7 +129,7 @@ pub type Ppp<'pp> = ParseProcess<'pp, PeekableWrapper<Chars<'pp>>>;
 pub struct NonTerminalRules<T> where T: VM {
     pub possible_productions: PossibleProductions,
     pub ignore: Option<ElementIndex>,
-    pub instruction: Option<Box<Instruction<T::Tstate>>>,
+    pub instruction: Vec<<T as VM>::Tinstrution>,
 }
 impl<T> fmt::Debug for NonTerminalRules<T> where T: VM {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

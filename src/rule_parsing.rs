@@ -5,8 +5,7 @@ use std::rc::Rc;
 use std::str::Chars;
 
 use parser_data::{ElementIndex, ElementType, ElementVerbose, NonTerminalRules, ParserData, ParseRules, PossibleProductions, Ppp, Production, RuleMap};
-use vms::{Instruction, VM};
-
+use vms::{VM};
 use crate::errors::GrammarError::UnexpectedElementError;
 use crate::errors::ParserError;
 use crate::errors::ParserError::{EndOfCharsError, UnexpectedCharError};
@@ -195,17 +194,17 @@ impl<'vm, 'pp, T> RuleParser<'vm, 'pp, T> where T: VM + 'vm {
         Ok(ignore_this)
     }
 
-    fn parse_instruction_section(&mut self, prod_name: &str) -> Result<Option<Box<Instruction<T::Tstate>>>, ParserError> {
+    fn parse_instruction_section(&mut self, prod_name: &str) -> Result<Vec<<T as VM>::Tinstrution>, ParserError> {
         match self.parse_symbol( '{') {
             Ok(_) => {}
-            Err(_) => { return Ok(None); }
+            Err(_) => { return Ok(vec![]); }
         };
         self.parse_whitespace();
         let cur_pos=self.parse_process.cur_pos();
         let mut g = ParseProcess::new_nested(&mut self.parse_process, Some('}'), Some('\\'),cur_pos);
-        let instruction = self.vm.make_instruction(prod_name, &mut g)?;
+        let instruction = self.vm.parse_instructions(prod_name, &mut g)?;
         self.parse_symbol('}')?;
-        Ok(Some(instruction))
+        Ok(instruction)
     }
 
     pub fn parse_possible_productions(&mut self) -> Result<PossibleProductions, ParserError> {

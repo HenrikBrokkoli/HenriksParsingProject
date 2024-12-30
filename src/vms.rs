@@ -6,8 +6,6 @@ pub mod counting_vm;
 pub mod simple_stack_vm;
 pub mod stack_vm;
 
-pub type Instruction<T> = dyn Fn(&mut Tree<String>, NodeId, &mut T) -> Result<(), String>;
-
 ///The trait for the VM that will run the parsed instructions.
 
 pub trait VM {
@@ -20,15 +18,15 @@ pub trait VM {
     ///Takes the current production name of the parser and a ParseProcess as argument and returns the fitting instructions.
     /// The contents of the ParseProcess can be ignored, but it needs to be finished (calling next until no more elements)
     /// returns a boxed instruction for later use in the interpreter.
-    fn make_instruction<'a, T>(
+    fn parse_instructions<'a, T>(
         &'a self,
         prod_name: &str,
         to_parse: &mut ParseProcess<T>,
-    ) -> Result<Self::Tinstrution, ParserError>
+    ) -> Result<Vec<Self::Tinstrution>, ParserError>
     where
         T: TPeekable<Item = char>;
 
-    fn execute_instruction(&self, instruction: &Self::Tinstrution, state: &mut usize);
+    fn execute_instruction(&self,tree:&mut Tree<String>,cur_node:NodeId, instruction: &Self::Tinstrution, state: &mut Self::Tstate);
 
     ///Create a new state to hold the state of the current VM. The Vm does not take care of the state.
     fn create_new_state() -> Self::Tstate;
@@ -53,11 +51,11 @@ impl VM for NullVm {
 
     type Tinstrution = usize;
 
-    fn make_instruction<'a, T>(
+    fn parse_instructions<'a, T>(
         &'a self,
         _prod_name: &str,
         to_parse: &mut ParseProcess<T>,
-    ) -> Result<Self::Tinstrution, ParserError>
+    ) -> Result<Vec<Self::Tinstrution>, ParserError>
     where
         T: TPeekable<Item = char>,
     {
@@ -65,10 +63,10 @@ impl VM for NullVm {
         while let Some(_cc) = c {
             c = to_parse.next()
         }
-        Ok(0)
+        Ok(vec![0])
     }
 
-    fn execute_instruction(&self, instruction: &Self::Tinstrution, state: &mut usize) {
+    fn execute_instruction(&self, tree: &mut Tree<String>,cur_node:NodeId,instruction: &Self::Tinstrution, state: &mut usize) {
         
     }
 

@@ -1,11 +1,10 @@
-use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::Chars;
 
 use parser_data::{ElementIndex, ElementType, ElementVerbose, Production};
 use tree::{NodeId, Tree};
-use vms::{Instruction, VM};
+use vms::VM;
 
 use crate::errors::GrammarError::MissingProduction;
 use crate::errors::ParserError;
@@ -25,7 +24,7 @@ where
 {
     vm: &'a T,
     discard: Option<ElementIndex>,
-    rules_with_steuermaps: HashMap<ElementIndex, NTRules<T::Tstate>>,
+    rules_with_steuermaps: HashMap<ElementIndex, NTRules<T>>,
     elements: Vec<ElementVerbose>,
 }
 
@@ -93,18 +92,14 @@ where
             Production::Empty => {}
         };
      
-        self.run_instructions(tree,id, &nt_rule.instruction, state).map_err(|x| ParserError::VmError { message: x })?;
+        self.run_instructions(tree,id, &nt_rule.instruction, state);
 
         Ok(())
     }
 
-    fn run_instructions(&self, tree: &mut Tree<String>,cur_node:NodeId, instruction: &Option<Box<Instruction<T::Tstate>>>, state: &mut T::Tstate) -> Result<(), String> {
-        match instruction {
-            None => { Ok(()) }
-            Some(instr) => {
-                let func: &Instruction<T::Tstate> = instr.borrow();
-                func(tree,cur_node, state)
-            }
+    fn run_instructions(&self, tree: &mut Tree<String>,cur_node:NodeId, instructions: &Vec<<T as VM>::Tinstrution>, state: &mut T::Tstate) {
+        for instruction in instructions {
+            self.vm.execute_instruction(tree, cur_node, &instruction,state);
         }
     }
 
