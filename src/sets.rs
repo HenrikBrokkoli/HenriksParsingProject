@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fmt;
-use parser_data::ElementIndex;
+use crate::parser_data::ElementIndex;
 
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]

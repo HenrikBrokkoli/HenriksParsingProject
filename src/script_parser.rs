@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::Chars;
 
-use parser_data::{ElementIndex, ElementType, ElementVerbose, Production};
-use tree::{NodeId, Tree};
-use vms::VM;
+use crate::parser_data::{ElementIndex, ElementType, ElementVerbose, Production};
+use crate::tree::{NodeId, Tree};
+use crate::vms::VM;
 
 use crate::errors::GrammarError::MissingProduction;
 use crate::errors::ParserError;
@@ -119,9 +119,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use script_parser::Parser;
-    use vms::{NullVm, VM};
-    use vms::counting_vm::CountingVm;
+    use crate::script_parser::Parser;
+    use crate::vms::{NullVm, VM};
+    use crate::vms::counting_vm::CountingVm;
 
     use crate::errors::ParserError;
 

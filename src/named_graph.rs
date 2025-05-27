@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use errors::GrammarError;
-use parser_data::ElementIndex;
+use crate::errors::GrammarError;
+use crate::parser_data::ElementIndex;
 
 use crate::named_graph::GraphError::{IndexOutOfBounds, NodeAlreadyExistsError, NodeDoesNotExistsError};
 use crate::simple_graph::{EdgeIndex, Graph, NodeData, NodeIndex, Successors};

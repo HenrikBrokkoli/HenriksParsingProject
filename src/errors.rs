@@ -1,7 +1,7 @@
 use std::fmt;
 
-use parser_data::ElementIndex;
-use tree::TreeError;
+use crate::parser_data::ElementIndex;
+use crate::tree::TreeError;
 
 
 #[derive(Debug)]

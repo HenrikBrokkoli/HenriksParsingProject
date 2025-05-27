@@ -4,8 +4,8 @@ use std::mem;
 use std::rc::Rc;
 use std::str::Chars;
 
-use parser_data::{ElementIndex, ElementType, ElementVerbose, NonTerminalRules, ParserData, ParseRules, PossibleProductions, Ppp, Production, RuleMap};
-use vms::{VM};
+use crate::parser_data::{ElementIndex, ElementType, ElementVerbose, NonTerminalRules, ParserData, ParseRules, PossibleProductions, Ppp, Production, RuleMap};
+use crate::vms::{VM};
 use crate::errors::GrammarError::UnexpectedElementError;
 use crate::errors::ParserError;
 use crate::errors::ParserError::{EndOfCharsError, UnexpectedCharError};
@@ -333,7 +333,7 @@ fn _check_is_derivative<T>(element_types: &Vec<ElementType>, parse_rules: &Parse
 
 #[cfg(test)]
 mod tests {
-    use vms::NullVm;
+    use crate::vms::NullVm;
 
     use super::*;
 

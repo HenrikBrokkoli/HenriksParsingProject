@@ -2,9 +2,9 @@ use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::iter::FromIterator;
 
-use errors::GrammarError;
-use parser_data::{ElementType, ParserData};
-use vms::VM;
+use crate::errors::GrammarError;
+use crate::parser_data::{ElementType, ParserData};
+use crate::vms::VM;
 
 use crate::first_sets::first_set_of_partial;
 use crate::named_graph::GraphNamedNodes;
@@ -96,8 +96,8 @@ fn graph_marking_for_rightside_elements<T>(prod: &Vec<ElementIndex>, follow_grap
 mod tests {
     use std::str::Chars;
 
-    use peekables::PeekableWrapper;
-    use vms::NullVm;
+    use crate::peekables::PeekableWrapper;
+    use crate::vms::NullVm;
 
     use crate::first_sets::get_first_sets;
     use crate::rule_parsing::RuleParser;

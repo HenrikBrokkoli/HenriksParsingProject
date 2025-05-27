@@ -1,7 +1,7 @@
-use errors::ParserError;
-use peekables::{ParseProcess, TPeekable};
-use tree::{NodeId, Tree};
-use vms::VM;
+use crate::errors::ParserError;
+use crate::peekables::{ParseProcess, TPeekable};
+use crate::tree::{NodeId, Tree};
+use crate::vms::VM;
 
 pub struct CountingVm {}
 
@@ -21,7 +21,7 @@ impl VM for CountingVm {
         Ok(vec![0])
     }
 
-    fn execute_instruction(&self, tree:&mut Tree<String>, cur_node: NodeId,instruction: &Self::Tinstrution, state: &mut usize) {
+    fn execute_instruction(&self, _:&mut Tree<String>, _: NodeId,_: &Self::Tinstrution, state: &mut usize) {
         CountingVm::increment_counter(state).unwrap()
     }
 

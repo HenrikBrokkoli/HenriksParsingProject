@@ -1,6 +1,6 @@
-use errors::ParserError;
-use peekables::{ParseProcess, TPeekable};
-use tree::{NodeId, Tree};
+use crate::errors::ParserError;
+use crate::peekables::{ParseProcess, TPeekable};
+use crate::tree::{NodeId, Tree};
 
 pub mod counting_vm;
 pub mod simple_stack_vm;
@@ -66,7 +66,7 @@ impl VM for NullVm {
         Ok(vec![0])
     }
 
-    fn execute_instruction(&self, tree: &mut Tree<String>,cur_node:NodeId,instruction: &Self::Tinstrution, state: &mut usize) {
+    fn execute_instruction(&self, _: &mut Tree<String>,_:NodeId,_: &Self::Tinstrution, _: &mut usize) {
         
     }
 

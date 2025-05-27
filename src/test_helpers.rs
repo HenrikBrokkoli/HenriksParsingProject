@@ -24,8 +24,8 @@ pub fn make_memberset_no_empty(chrs: &str) -> HashSet<SetMember> {
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
-    use sets::{SetMember, SetMemberWithEmpty};
-    use test_helpers::{make_memberset, make_memberset_no_empty};
+    use crate::sets::{SetMember, SetMemberWithEmpty};
+    use crate::test_helpers::{make_memberset, make_memberset_no_empty};
 
     #[test]
     fn test_make_memberset() {

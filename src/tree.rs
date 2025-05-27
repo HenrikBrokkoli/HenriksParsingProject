@@ -1,6 +1,6 @@
-use simple_graph::NodeIndex;
+use crate::simple_graph::NodeIndex;
 use std::fmt;
-use tree::TreeError::{ChildDoesNotExists, NodeDoesNotExists, NodeWasRemoved};
+use crate::tree::TreeError::{ChildDoesNotExists, NodeDoesNotExists, NodeWasRemoved};
 
 pub type NodeId = usize;
 
@@ -237,7 +237,7 @@ impl fmt::Display for TreeError {
 
 #[cfg(test)]
 mod tests {
-    use tree::Tree;
+    use crate::tree::Tree;
 
     #[test]
     fn test_tree_add_node() {

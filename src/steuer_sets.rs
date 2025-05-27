@@ -20,8 +20,8 @@ pub fn get_steuer_sets(first_sets: &NamedSets, follow_sets: &NamedSetsNoEmpty) -
 #[cfg(test)]
 mod tests {
     use std::str::Chars;
-    use peekables::PeekableWrapper;
-    use vms::NullVm;
+    use crate::peekables::PeekableWrapper;
+    use crate::vms::NullVm;
     use crate::first_sets::get_first_sets;
     use crate::follow_sets::get_follow_sets;
     use crate::rule_parsing::RuleParser;

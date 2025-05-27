@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-use parser_data::{ElementData, ElementIndex, ElementType, ParserData};
-use vms::VM;
+use crate::parser_data::{ElementData, ElementIndex, ElementType, ParserData};
+use crate::vms::VM;
 
 use crate::errors::GrammarError;
 use crate::errors::GrammarError::{MissingFollowSet, MissingSteuerSet, SteuerSetsNotDistinct};
@@ -99,8 +99,8 @@ fn fill_with_steuer_set(set_no_empty: &HashSet<SetMember>, steuer_map: &mut Steu
 mod tests {
     use std::str::Chars;
 
-    use peekables::PeekableWrapper;
-    use vms::NullVm;
+    use crate::peekables::PeekableWrapper;
+    use crate::vms::NullVm;
 
     use crate::first_sets::get_first_sets;
     use crate::follow_sets::get_follow_sets;

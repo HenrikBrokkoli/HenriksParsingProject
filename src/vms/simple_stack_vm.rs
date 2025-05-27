@@ -1,7 +1,7 @@
-use errors::ParserError;
-use peekables::{ParseProcess, TPeekable};
-use tree::{NodeId, Tree};
-use vms::VM;
+use crate::errors::ParserError;
+use crate::peekables::{ParseProcess, TPeekable};
+use crate::tree::{NodeId, Tree};
+use crate::vms::VM;
 
 pub struct SimpleStackVmState {
     pub stack: Vec<usize>,

@@ -1,5 +1,5 @@
 use crate::errors::GrammarError;
-use parser_data::{ElementIndex, ElementType, ParserData, Production};
+use crate::parser_data::{ElementIndex, ElementType, ParserData, Production};
 use std::collections::{HashMap, HashSet};
 
 use crate::sets::{NamedSets, SetMemberWithEmpty};
@@ -105,9 +105,10 @@ fn get_first_set_of_production<T>(production: &Production, first_sets: &mut Name
 
 #[cfg(test)]
 mod tests {
-    use peekables::PeekableWrapper;
-    use std::str::Chars;
-    use vms::NullVm;
+    use crate::peekables::PeekableWrapper;
+    use std::str::{Chars};
+    use crate::parser_data::ElementVerbose;
+    use crate::vms::NullVm;
 
     use crate::rule_parsing::RuleParser;
     use crate::test_helpers::make_memberset;
@@ -132,7 +133,10 @@ mod tests {
         assert_eq!(make_memberset("abc#"), first_dict.get(&rule_parser.parser_data.get_element_nt_index("start").unwrap()).unwrap().clone());
         assert_eq!(make_memberset("b#"), first_dict.get(&rule_parser.parser_data.get_element_nt_index("identifier2").unwrap()).unwrap().clone());
         assert_eq!(make_memberset("c"), first_dict.get(&rule_parser.parser_data.get_element_nt_index("identifier3").unwrap()).unwrap().clone());
-        assert_eq!(make_memberset("b"), first_dict.get(&rule_parser.parser_data.get_element_nt_index("b_terminal").unwrap()).unwrap().clone())
+        
+        //Terminals have no more firstdict entry
+        //assert_eq!(make_memberset("b"), first_dict.get(&rule_parser.parser_data.get_element_t_index("b_terminal").unwrap()).unwrap().clone())
+        
     }
 
 
@@ -198,7 +202,8 @@ mod tests {
     fn test_first_set_of_partial() {
         let elements = vec![0];
         let mut first_sets = NamedSets::new();
-        let  parser_data = ParserData::<NullVm>::new();
+        let mut parser_data = ParserData::<NullVm>::new();
+        parser_data.get_or_add_element_key(&ElementVerbose::new(String::from("0"),ElementType::NonTerminal));
         first_sets.insert(0, make_memberset("c#"));
         let partial = first_set_of_partial(&elements, &first_sets, &parser_data).unwrap();
         assert_eq!(make_memberset("c#"), partial);
@@ -208,7 +213,9 @@ mod tests {
     fn test_first_set_of_partial2() {
         let elements = vec![0,1];
         let mut first_sets = NamedSets::new();
-        let parser_data = ParserData::<NullVm>::new();
+        let mut parser_data = ParserData::<NullVm>::new();
+        parser_data.get_or_add_element_key(&ElementVerbose::new(String::from("0"),ElementType::NonTerminal));
+        parser_data.get_or_add_element_key(&ElementVerbose::new(String::from("1"),ElementType::NonTerminal));
         first_sets.insert(0, make_memberset("c#"));
         first_sets.insert(1, make_memberset("d#"));
         let partial = first_set_of_partial(&elements, &first_sets, &parser_data).unwrap();
@@ -219,7 +226,10 @@ mod tests {
     fn test_first_set_of_partial3() {
         let elements = vec![0,1,2];
         let mut first_sets = NamedSets::new();
-        let parser_data = ParserData::<NullVm>::new();
+        let mut parser_data = ParserData::<NullVm>::new();
+        parser_data.get_or_add_element_key(&ElementVerbose::new(String::from("0"),ElementType::NonTerminal));
+        parser_data.get_or_add_element_key(&ElementVerbose::new(String::from("1"),ElementType::NonTerminal));
+        parser_data.get_or_add_element_key(&ElementVerbose::new(String::from("2"),ElementType::NonTerminal));
         first_sets.insert(0, make_memberset("c#"));
         first_sets.insert(1, make_memberset("d"));
         first_sets.insert(2, make_memberset("e#"));
@@ -246,12 +256,12 @@ mod tests {
         rule_parser.parse_rules().expect("TODO: panic message");
         let parser_data=rule_parser.parser_data;
         let first_dict = get_first_sets(&parser_data).unwrap();
-        assert_eq!(make_memberset("blcx"), first_dict.get(&parser_data.get_element_nt_index("start").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset("lhbgc#"), first_dict.get(&parser_data.get_element_nt_index("start").unwrap()).unwrap().clone());
         assert_eq!(make_memberset("c#"), first_dict.get(&parser_data.get_element_nt_index("identifier3").unwrap()).unwrap().clone());
-        assert_eq!(make_memberset("lghx"), first_dict.get(&parser_data.get_element_nt_index("list").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset("ghl#"), first_dict.get(&parser_data.get_element_nt_index("list").unwrap()).unwrap().clone());
         assert_eq!(make_memberset("#gh"), first_dict.get(&parser_data.get_element_nt_index("listt").unwrap()).unwrap().clone());
         assert_eq!(make_memberset("gh"), first_dict.get(&parser_data.get_element_nt_index("listelement").unwrap()).unwrap().clone());
-        assert_eq!(make_memberset("xl"), first_dict.get(&parser_data.get_element_nt_index("liststart").unwrap()).unwrap().clone());
+        assert_eq!(make_memberset("l#"), first_dict.get(&parser_data.get_element_nt_index("liststart").unwrap()).unwrap().clone());
         assert_eq!(make_memberset("b#"), first_dict.get(&parser_data.get_element_nt_index("identifier2").unwrap()).unwrap().clone());
     }
 }

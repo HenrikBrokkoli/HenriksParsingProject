@@ -1,8 +1,8 @@
-use errors::ParserError;
-use parse_funcs::{parse_var_name, parse_whitespace};
-use peekables::{ParseProcess, TPeekable};
-use tree::{NodeId, Tree};
-use vms::VM;
+use crate::errors::ParserError;
+use crate::parse_funcs::{parse_var_name, parse_whitespace};
+use crate::peekables::{ParseProcess, TPeekable};
+use crate::tree::{NodeId, Tree};
+use crate::vms::VM;
 
 use crate::parse_funcs::{parse_symbol, parse_usize};
 
