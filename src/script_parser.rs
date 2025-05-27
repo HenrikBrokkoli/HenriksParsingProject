@@ -105,7 +105,8 @@ where
 
     fn parse_terminal(&self, to_parse: &mut ParseProcess<PeekableWrapper<Chars<'a>>>, terminal: &str) -> Result<String, ParserError> {
         for chr in terminal.chars() {
-            let char_to_parse: &char = to_parse.peek().ok_or(EndOfCharsError)?;
+            let pos=to_parse.cur_pos();
+            let char_to_parse: &char = to_parse.peek().ok_or(EndOfCharsError{pos})?;
             if *char_to_parse != chr {
                 return Err(UnexpectedCharError { chr: *char_to_parse, pos: to_parse.cur_pos(), expected: String::from(chr) });
             }

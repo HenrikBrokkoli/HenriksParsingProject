@@ -8,7 +8,7 @@ use HenriksParsingProject::vms::VM;
 fn main() {
 
     //First read the rules that define the syntax of our language
-    let rules = fs::read_to_string("examples/simple_stack_based_math.txt").expect("Unable to read rule file");
+    let rules = fs::read_to_string("examples/stack_based_math.txt").expect("Unable to read rule file");
     //We use a simple Stackmachine that has a few operations, so our code language can do something.
     let vm=StackVm{};
     //The state of the stack machine is not handled by the stack machine. We have to create it.

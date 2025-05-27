@@ -260,7 +260,7 @@ impl<'vm, 'pp, T> RuleParser<'vm, 'pp, T> where T: VM + 'vm {
             Some('"') => Ok(Some(ElementVerbose::new(parse_terminal(to_parse)?,ElementType::Terminal))),
             Some(x) if x.is_alphabetic() => Ok(Some(ElementVerbose::new(parse_var_name(to_parse)?,ElementType::NonTerminal))),
             Some(x) => Err(UnexpectedCharError { chr: *x, pos: to_parse.cur_pos(), expected: String::from("char # for empty, \" for terminal ort alphabetic for element") }),
-            _ => Err(EndOfCharsError)
+            _ => Err(EndOfCharsError{pos: to_parse.cur_pos()})
         }
     }
 
@@ -277,15 +277,18 @@ pub fn parse_terminal(to_parse: &mut ParseProcess<PeekableWrapper<Chars>>) -> Re
     parse_symbol(to_parse, '"')?;
     let mut literal = "".to_owned();
     let mut escape = false;
-    let mut cur_char = to_parse.peek().ok_or(EndOfCharsError)?;
+    let mut pos= to_parse.cur_pos();
+    let mut cur_char = to_parse.peek().ok_or(EndOfCharsError{pos })?;
     while *cur_char != '"' || escape {
         if *cur_char == '\\' && !escape {
             escape = true
         } else {
             escape = false
         }
-        literal.push(to_parse.next().ok_or(EndOfCharsError)?);
-        cur_char = to_parse.peek().ok_or(EndOfCharsError)?
+        pos= to_parse.cur_pos();
+        literal.push(to_parse.next().ok_or(EndOfCharsError{pos })?);
+        pos= to_parse.cur_pos();
+        cur_char = to_parse.peek().ok_or(EndOfCharsError{pos })?
     }
     to_parse.next();//discard trailing quote
     Ok(literal)

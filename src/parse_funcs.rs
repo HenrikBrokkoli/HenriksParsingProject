@@ -19,14 +19,16 @@ pub fn parse_digits<T>(to_parse: &mut ParseProcess<T>) -> Result<String, ParserE
         if !x.is_digit(10) {
             break;
         }
-        number_string.push(to_parse.next().ok_or(EndOfCharsError)?);
+        let pos=to_parse.cur_pos();
+        number_string.push(to_parse.next().ok_or(EndOfCharsError{pos})?);
         cur_char = to_parse.peek();
     };
     Ok(number_string)
 }
 
 pub fn parse_usize<T>(to_parse: &mut ParseProcess<T>) -> Result<usize, ParserError> where T: TPeekable<Item=char> {
-    let cur_char = to_parse.peek().ok_or(EndOfCharsError)?;
+    let pos=to_parse.cur_pos();
+    let cur_char = to_parse.peek().ok_or(EndOfCharsError{pos})?;
     let mut numbers = cur_char.to_string();
     if !cur_char.is_digit(10) {
         return Err(UnexpectedCharError { chr: *cur_char, pos: to_parse.cur_pos() , expected:String::from("digit expected")});
@@ -41,15 +43,16 @@ pub fn parse_usize<T>(to_parse: &mut ParseProcess<T>) -> Result<usize, ParserErr
 }
 
 pub fn parse_isize<T>(to_parse: &mut ParseProcess<T>) -> Result<isize, ParserError> where T: TPeekable<Item=char> {
-    let cur_char = *to_parse.peek().ok_or(EndOfCharsError)?;
+    let mut pos=to_parse.cur_pos();
+    let cur_char = *to_parse.peek().ok_or(EndOfCharsError{ pos})?;
     let mut numbers = cur_char.to_string();
     let has_sign = cur_char == '-';
     if has_sign {
         to_parse.next();
         numbers.push(cur_char);
     }
-
-    let cur_char = *to_parse.peek().ok_or(EndOfCharsError)?;
+    pos = to_parse.cur_pos();
+    let cur_char = *to_parse.peek().ok_or(EndOfCharsError{ pos})?;
     if !cur_char.is_digit(10) {
         return Err(UnexpectedCharError { chr: cur_char, pos: to_parse.cur_pos(),expected:String::from("digit or - expected") });
     }
@@ -71,11 +74,12 @@ pub fn parse_symbol<T>(to_parse: &mut ParseProcess<T>, sym: char) -> Result<(), 
             Err(UnexpectedCharError { chr: *chr, pos: to_parse.cur_pos() ,expected:String::from(sym)})
         };
     }
-    Err(EndOfCharsError)
+    Err(EndOfCharsError{pos: to_parse.cur_pos()})
 }
 
 pub fn parse_var_name<T>(to_parse: &mut ParseProcess<T>) -> Result<String, ParserError> where T: TPeekable<Item=char> {
-    let cur_char = to_parse.peek().ok_or(EndOfCharsError)?;
+    let pos= to_parse.cur_pos();
+    let cur_char = to_parse.peek().ok_or(EndOfCharsError{pos})?;
     if !cur_char.is_alphabetic() {
         return Err(UnexpectedCharError { chr: *cur_char, pos: to_parse.cur_pos() , expected:String::from("alphabetic character")});
     }
@@ -86,7 +90,7 @@ pub fn parse_var_name<T>(to_parse: &mut ParseProcess<T>) -> Result<String, Parse
         if !(x.is_alphanumeric()||*x=='_') {
             break;
         }
-        id_name.push(to_parse.next().ok_or(EndOfCharsError)?);
+        id_name.push(to_parse.next().ok_or(EndOfCharsError{pos: to_parse.cur_pos()})?);
         cur_char = to_parse.peek();
     }
     Ok(id_name)

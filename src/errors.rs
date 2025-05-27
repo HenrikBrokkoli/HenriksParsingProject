@@ -7,7 +7,7 @@ use tree::TreeError;
 #[derive(Debug)]
 pub enum ParserError {
     UnexpectedCharError { chr: char, pos: usize, expected: String },
-    EndOfCharsError,
+    EndOfCharsError{pos: usize},
     GramError { err: GrammarError },
     UnknownSpecialOperation { operation: String, pos: usize },
     Impossible,
@@ -22,7 +22,7 @@ impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ParserError::UnexpectedCharError { chr, pos, expected } => write!(f, " \"{}\" at pos {} was not expected. Expected {}", chr, pos, expected),
-            ParserError::EndOfCharsError => write!(f, "There was a char expected but there was none"),
+            ParserError::EndOfCharsError{pos} => write!(f, "There was a char expected but there was none at pos {}",pos),
             ParserError::UnknownSpecialOperation { operation, pos } => write!(f, " \"{}\" at pos {} was not expected", operation, pos),
             ParserError::GramError { .. } => write!(f, "There was a Grammar error"),
             ParserError::Impossible => write!(f,"This error should not be possible"),
