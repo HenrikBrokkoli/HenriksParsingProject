@@ -160,7 +160,8 @@ a_a -> \"a\";\
 
         let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
         let mut vm = NullVm::new();
-        let rule_parser = RuleParser::new(&mut peekable, &mut vm);
+        let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
+        rule_parser.parse_rules().unwrap();
         let parser_data = rule_parser.parser_data;
         let first_dict = get_first_sets(&parser_data).unwrap();
         let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(), &first_dict, &parser_data).unwrap();
@@ -178,7 +179,8 @@ a_a -> \"a\";\
 
         let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rules.chars().peekable());
         let mut vm = NullVm::new();
-        let rule_parser = RuleParser::new(&mut peekable, &mut vm);
+        let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
+        rule_parser.parse_rules().unwrap();
         let parser_data = rule_parser.parser_data;
         let first_dict = get_first_sets(&parser_data).unwrap();
         let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(), &first_dict, &parser_data).unwrap();
