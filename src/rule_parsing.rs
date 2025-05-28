@@ -14,6 +14,7 @@ use crate::peekables::{ParseProcess, PeekableWrapper, TPeekable};
 
 
 
+//TODO not a good interface. parse roules should take the rulestext as an argument.
 
 pub struct RuleParser<'vm, 'pp, T> where T: VM + 'vm {
     pub vm: &'vm T,

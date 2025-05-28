@@ -62,7 +62,8 @@ mod tests {
 
         let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rules.chars().peekable());
         let mut vm = NullVm::new();
-        let parser = RuleParser::new(&mut peekable, &mut vm);
+        let mut parser = RuleParser::new(&mut peekable, &mut vm);
+        parser.parse_rules().unwrap();
         let parser_data=parser.parser_data;
         let first_dict = get_first_sets(&parser_data).unwrap();
         let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(),  &first_dict, &parser_data).unwrap();
@@ -84,7 +85,8 @@ mod tests {
 
         let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rules.chars().peekable());
         let mut vm = NullVm::new();
-        let parser = RuleParser::new(&mut peekable, &mut vm);
+        let mut parser = RuleParser::new(&mut peekable, &mut vm);
+        parser.parse_rules().unwrap();
         let parser_data=parser.parser_data;
         let first_dict = get_first_sets(&parser_data).unwrap();
         let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(),  &first_dict, &parser_data).unwrap();
@@ -124,7 +126,8 @@ whitespace -> \" \";";
 
         let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
         let mut vm = NullVm::new();
-        let parser = RuleParser::new(&mut peekable, &mut vm);
+        let mut parser = RuleParser::new(&mut peekable, &mut vm);
+        parser.parse_rules().unwrap();
         let parser_data=parser.parser_data;
 
         let first_dict = get_first_sets(&parser_data).unwrap();
