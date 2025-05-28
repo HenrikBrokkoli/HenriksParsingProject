@@ -1,6 +1,6 @@
 use crate::errors::ParserError;
 use crate::peekables::{ParseProcess, TPeekable};
-use crate::tree::{NodeId, Tree};
+use crate::tree::{Node, NodeId, Tree};
 use crate::vms::VM;
 
 pub struct SimpleStackVmState {

@@ -97,7 +97,7 @@ where
         Ok(())
     }
 
-    fn run_instructions(&self, tree: &mut Tree<String>,cur_node:NodeId, instructions: &Vec<<T as VM>::Tinstrution>, state: &mut T::Tstate) {
+    fn run_instructions(&self, tree: &mut Tree<String>, cur_node: NodeId, instructions: &Vec<<T as VM>::Tinstrution>, state: &mut T::Tstate) {
         for instruction in instructions {
             self.vm.execute_instruction(tree, cur_node, &instruction,state);
         }
@@ -124,6 +124,7 @@ mod tests {
     use crate::vms::counting_vm::CountingVm;
 
     use crate::errors::ParserError;
+    use crate::tree::NodeId;
 
     #[test]
     fn test_script_parser() {
@@ -195,7 +196,7 @@ mod tests {
         println!("hallo");
         println!("{}",format!("{graph:?}"));
         
-        let res = graph.get_by_path_or_none(0, vec![0, 0].into_iter()).unwrap().unwrap();
+        let res = graph.get_by_path_or_none(NodeId::new(0,0), vec![0, 0].into_iter()).unwrap().unwrap();
         assert_eq!("a_terminal", res.data)
     }
 
@@ -212,7 +213,7 @@ mod tests {
 
         let text_to_parse = "c_terminal";
         let tree = parser.parse(text_to_parse, &mut state).unwrap();
-        let res = tree.get_by_path_or_none(0, vec![0, 0].into_iter()).unwrap();
+        let res = tree.get_by_path_or_none(NodeId::new(0,0), vec![0, 0].into_iter()).unwrap();
         assert!(res.is_none())
     }
 
@@ -229,7 +230,7 @@ mod tests {
 
         let text_to_parse = "ab";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
-        let res = &graph.get_by_path_or_none(0, vec![0, 1, 0].into_iter()).unwrap().unwrap().data;
+        let res = &graph.get_by_path_or_none(NodeId::new(0,0), vec![0, 1, 0].into_iter()).unwrap().unwrap().data;
         assert_eq!("b", res)
     }
 
@@ -312,9 +313,9 @@ mod tests {
         let text_to_parse = " a  b   c  ";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
 
-        assert_eq!("a", graph.get_by_path_or_none(0, vec![0].into_iter()).unwrap().unwrap().data);
-        assert_eq!("b", graph.get_by_path_or_none(0, vec![1].into_iter()).unwrap().unwrap().data);
-        assert_eq!("c", graph.get_by_path_or_none(0, vec![2].into_iter()).unwrap().unwrap().data);
+        assert_eq!("a", graph.get_by_path_or_none(NodeId::new(0,0), vec![0].into_iter()).unwrap().unwrap().data);
+        assert_eq!("b", graph.get_by_path_or_none(NodeId::new(0,0), vec![1].into_iter()).unwrap().unwrap().data);
+        assert_eq!("c", graph.get_by_path_or_none(NodeId::new(0,0), vec![2].into_iter()).unwrap().unwrap().data);
     }
 
     #[test]
@@ -335,8 +336,8 @@ mod tests {
         let text_to_parse = "a    c";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
 
-        assert_eq!("a", graph.get_by_path_or_none(0, vec![0, 0].into_iter()).unwrap().unwrap().data);
-        assert_eq!("c", graph.get_by_path_or_none(0, vec![1].into_iter()).unwrap().unwrap().data);
+        assert_eq!("a", graph.get_by_path_or_none(NodeId::new(0,0), vec![0, 0].into_iter()).unwrap().unwrap().data);
+        assert_eq!("c", graph.get_by_path_or_none(NodeId::new(0,0), vec![1].into_iter()).unwrap().unwrap().data);
     }
 
     #[test]

@@ -26,7 +26,7 @@ pub trait VM {
     where
         T: TPeekable<Item = char>;
 
-    fn execute_instruction(&self,tree:&mut Tree<String>,cur_node:NodeId, instruction: &Self::Tinstrution, state: &mut Self::Tstate);
+    fn execute_instruction(&self, tree:&mut Tree<String>, cur_node: NodeId, instruction: &Self::Tinstrution, state: &mut Self::Tstate);
 
     ///Create a new state to hold the state of the current VM. The Vm does not take care of the state.
     fn create_new_state() -> Self::Tstate;
@@ -66,7 +66,7 @@ impl VM for NullVm {
         Ok(vec![0])
     }
 
-    fn execute_instruction(&self, _: &mut Tree<String>,_:NodeId,_: &Self::Tinstrution, _: &mut usize) {
+    fn execute_instruction(&self, _: &mut Tree<String>, _: NodeId, _: &Self::Tinstrution, _: &mut usize) {
         
     }
 

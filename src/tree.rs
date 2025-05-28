@@ -1,30 +1,67 @@
 use crate::simple_graph::NodeIndex;
 use std::fmt;
-use crate::tree::TreeError::{ChildDoesNotExists, NodeDoesNotExists, NodeWasRemoved};
+use std::sync::atomic::AtomicUsize;
+use crate::tree::TreeError::{ChildDoesNotExists, NodeDoesNotExist, NodeWasRemoved};
 
-pub type NodeId = usize;
+type NodePtr = usize;
+type NodePk = usize;
 
+#[derive(Debug,Copy,Clone,PartialEq,Eq,Hash)]
+pub struct NodeId{
+    pub node_ptr:NodePtr,
+    pub node_pk:NodePk,
+}
+impl NodeId{
+    pub(crate) fn new(node_ptr: NodePtr, node_pk: NodePk) -> NodeId{
+        NodeId{node_ptr,node_pk}
+    }
+}
+impl fmt::Display for NodeId {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write strictly the first element into the supplied output
+        // stream: `f`. Returns `fmt::Result` which indicates whether the
+        // operation succeeded or failed. Note that `write!` uses syntax which
+        // is very similar to `println!`.
+        write!(f, "ptr_in_arr:{}, pk:{}", self.node_ptr,self.node_pk)
+    }
+}
 #[derive(Debug)]
 pub struct Tree<T> {
     nodes: Vec<Node<T>>,
-    free_node_indexes: Vec<NodeIndex>,
-
+    free_node_indexes: Vec<NodePtr>,
+    counter:AtomicUsize,
 }
 
 #[derive(Debug)]
 pub struct Node<T> {
-    parent: Option<NodeId>,
-    previous_sibling: Option<NodeId>,
-    next_sibling: Option<NodeId>,
-    first_child: Option<NodeId>,
-    last_child: Option<NodeId>,
+    parent: Option<NodePtr>,
+    previous_sibling: Option<NodePtr>,
+    next_sibling: Option<NodePtr>,
+    first_child: Option<NodePtr>,
+    last_child: Option<NodePtr>,
+    pk:NodePk,
     pub data: T,
+}
+impl<T> Node<T> {
+    fn new(parent: Option<NodePtr>, data: T, pk: NodePk,previous_sibling:Option<NodePtr>) -> Node<T> {
+        Node {
+            parent,
+            first_child: None,
+            last_child: None,
+            previous_sibling,
+            next_sibling: None,
+            pk,
+            data,
+        }
+    }
+    
 }
 
 
 impl<T> Tree<T> {
     pub fn new() -> Tree<T> {
-        Tree { nodes: vec![], free_node_indexes: vec![] }
+        Tree { nodes: vec![], free_node_indexes: vec![], counter:AtomicUsize::new(0) }
     }
     pub fn add_node(&mut self, data: T, parent: Option<NodeId>) -> Result<NodeId, TreeError> {
         // Get the next free index
@@ -36,33 +73,25 @@ impl<T> Tree<T> {
                 i
             }
         };
-        match parent {
+        
+        let new_pk=match parent {
             None => {
-                let new_node = Node {
-                    parent: None,
-                    first_child: None,
-                    last_child: None,
-                    previous_sibling: None,
-                    next_sibling: None,
-                    data,
-                };
+                let pk=self.counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                let new_node = Node::new(None,data,pk,None);
                 if reused_index {
                     self.nodes[next_index] = new_node;
                 } else {
                     self.nodes.push(new_node);
                 }
+                pk
             }
             Some(parent_id) => {
+                if !self.node_exists(parent_id) {
+                    return Err(NodeDoesNotExist { node_id: parent_id });  
+                }
+                let pk=self.counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 let parent_node = self.get_node_mut(parent_id)?;
-
-                let new_node = Node {
-                    parent: Some(parent_id),
-                    first_child: None,
-                    last_child: None,
-                    previous_sibling: parent_node.last_child,
-                    next_sibling: None,
-                    data,
-                };
+                let new_node = Node::new(Some(parent_id.node_ptr), data, pk,parent_node.last_child);
 
                 let last_child_index = parent_node.last_child;
                 if let None = parent_node.first_child {
@@ -79,10 +108,12 @@ impl<T> Tree<T> {
                 } else {
                     self.nodes.push(new_node);
                 }
+                pk
+                
             }
-        }
+        };
 
-        Ok(next_index)
+        Ok(NodeId::new(next_index,new_pk))
     }
     
 
@@ -101,11 +132,11 @@ impl<T> Tree<T> {
 
     pub fn get_children(&self, node_id: NodeId) -> Vec<NodeId> {
         let mut children = vec![];
-        let node = &self.nodes[node_id];
+        let node = &self.nodes[node_id.node_ptr];
         let mut cur_children_ix = node.first_child;
         while let Some(child_index) = cur_children_ix {
             let cur_children = &self.nodes[child_index];
-            children.push(child_index);
+            children.push(NodeId::new(child_index,cur_children.pk));
             cur_children_ix = cur_children.next_sibling;
         }
 
@@ -144,29 +175,51 @@ impl<T> Tree<T> {
     }
 
     pub fn get_node(&self, node_id: NodeId) -> Result<&Node<T>, TreeError> {
-        if node_id >= self.nodes.len() {
-            return Err(NodeDoesNotExists { node_id });
+        if node_id.node_ptr >= self.nodes.len() {
+            return Err(NodeDoesNotExist { node_id });
         }
-        if self.free_node_indexes.contains(&node_id) {
+        if self.free_node_indexes.contains(&node_id.node_pk) {
             return Err(NodeWasRemoved { node_id });
         }
-        Ok(&self.nodes[node_id])
+        let current_node = &self.nodes[node_id.node_ptr];
+        if current_node.pk != node_id.node_pk {
+            return Err(NodeDoesNotExist { node_id });       
+        }
+        Ok(&current_node)
     }
     pub fn get_node_mut(&mut self, node_id: NodeId) -> Result<&mut Node<T>, TreeError> {
-        if node_id >= self.nodes.len() {
-            return Err(NodeDoesNotExists { node_id });
+        if node_id.node_ptr >= self.nodes.len() {
+            return Err(NodeDoesNotExist { node_id });
         }
-        if self.free_node_indexes.contains(&node_id) {
+        if self.free_node_indexes.contains(&node_id.node_ptr) {
             return Err(NodeWasRemoved { node_id });
         }
-        Ok(&mut self.nodes[node_id])
+        let current_node = &mut self.nodes[node_id.node_ptr];
+        if current_node.pk != node_id.node_pk {
+            return Err(NodeDoesNotExist { node_id });
+        }
+        Ok(current_node)
+    }
+    pub fn node_exists(&self, node_id: NodeId) -> bool {
+        if node_id.node_ptr >= self.nodes.len() {
+            return false;
+        }
+        if self.free_node_indexes.contains(&node_id.node_pk) {
+            return false;
+        }
+        let current_node = &self.nodes[node_id.node_ptr];
+        if current_node.pk != node_id.node_pk {
+            return false;
+        }
+        true
     }
 
-    pub fn remove_branch(&mut self, node_id: NodeId) {
-        let node = &self.nodes[node_id];
+    pub fn remove_branch(&mut self, node_id: NodeId)->Result<(),TreeError> {
+        let node = &self.get_node(node_id)?;
         let parent_id_maybe = node.parent;
-        let mut nodes_to_free = self.get_descendants(node_id);
-        nodes_to_free.push(node_id);
+        let mut nodes_to_free = self.get_descendants(node_id).iter().map(|x| x.node_ptr).collect::<Vec<usize>>();
+        nodes_to_free.push(node_id.node_ptr);
+        nodes_to_free.push(node_id.node_ptr);
 
         let next_sibling_id = node.next_sibling;
         let previous_sibling_id = node.previous_sibling;
@@ -174,10 +227,10 @@ impl<T> Tree<T> {
 
         if let Some(parent_id) = parent_id_maybe {
             let parent = &mut self.nodes[parent_id];
-            if parent.first_child == Some(node_id) {
+            if parent.first_child == Some(node_id.node_ptr) {
                 parent.first_child = next_sibling_id;
             }
-            if parent.last_child == Some(node_id) {
+            if parent.last_child == Some(node_id.node_ptr) {
                 parent.last_child = previous_sibling_id
             }
         }
@@ -190,13 +243,15 @@ impl<T> Tree<T> {
             next.previous_sibling = previous_sibling_id;
         }
         self.free_node_indexes.extend(nodes_to_free);
+        
+        Ok(())
     }
 }
 
 
 pub struct Children<'tree, T> {
     tree: &'tree Tree<T>,
-    current_child: Option<NodeId>,
+    current_child: Option<NodePtr>,
 }
 
 impl<'tree, T> Iterator for Children<'tree, T> {
@@ -217,7 +272,7 @@ impl<'tree, T> Iterator for Children<'tree, T> {
 
 #[derive(Debug)]
 pub enum TreeError {
-    NodeDoesNotExists { node_id: NodeId },
+    NodeDoesNotExist { node_id: NodeId },
     NodeWasRemoved { node_id: NodeId },
     ChildDoesNotExists { child_nth: usize },
 }
@@ -227,7 +282,7 @@ impl std::error::Error for TreeError {}
 impl fmt::Display for TreeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            NodeDoesNotExists { node_id } => write!(f, "{} does not exists", node_id),
+            NodeDoesNotExist { node_id } => write!(f, "{} does not exists", node_id),
             NodeWasRemoved { node_id } => write!(f, "{} was removed", node_id),
             ChildDoesNotExists {child_nth}=> write!(f, "{} does not exist", child_nth),
         }
@@ -237,7 +292,14 @@ impl fmt::Display for TreeError {
 
 #[cfg(test)]
 mod tests {
-    use crate::tree::Tree;
+    use crate::tree::{NodeId, Tree};
+    
+    #[test]
+    fn get_node_does_not_exists() {
+        let tree= Tree::<usize>::new();
+        let res = tree.get_node(NodeId::new(0,0));
+        assert!( res.is_err());
+    }
 
     #[test]
     fn test_tree_add_node() {
@@ -245,7 +307,6 @@ mod tests {
         let node=tree.add_node("test",None).unwrap();
         let res = tree.get_node(node).unwrap().data;
         assert_eq!("test", res);
-        
     }
     #[test]
     fn test_tree_add_delete_node() {
