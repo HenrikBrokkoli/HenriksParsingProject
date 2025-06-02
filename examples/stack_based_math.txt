@@ -10,9 +10,9 @@ print -> "print" {PopToReg;PrintReg;};
 add -> "+" {PopToReg; Add;};
 sub -> "-" {PopToReg;Sub;};
 
-number->$[IGNORE:#] digit number_s {PopDiscard;};
+number-> digit number_s {PopDiscard;};
 number_s -> number_s_ | # {};
-number_s_ ->$[IGNORE:#] digit number_s {PopToReg;PopToReg2;PopDiscard;Pow 10;RegAddConst 1;PushReg;};
+number_s_ -> digit number_s {PopToReg;PopToReg2;PopDiscard;Pow 10;RegAddConst 1;PushReg;};
 digit -> "0"|"1"|"2"|"3"|"4"|"5"|"6"|"7"|"8"|"9" {PushFromTree;PushConst 1;};
 
 

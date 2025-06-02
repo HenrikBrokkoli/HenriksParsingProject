@@ -23,10 +23,7 @@ where
 {
     pub vm: &'vm T,
     pub parse_process: Ppp<'pp>,
-    pub parser_data: ParserData<T>,
-    //pub parse_rules: ParseRules<T>,
-    //elments: Vec<ET>,
-    //element_data: HashMap<ET, ElementData>,
+    pub parser_data: ParserData<T>
 }
 
 impl<'vm, 'pp, T> RuleParser<'vm, 'pp, T>

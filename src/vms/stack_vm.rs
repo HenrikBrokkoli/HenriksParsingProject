@@ -9,13 +9,13 @@ use crate::parse_funcs::{parse_symbol, parse_usize};
 
 pub enum Instruction {
     Add,
-    RegAddConst(usize),
+    RegAddConst(isize),
     Sub,
     Digit,
     PopToReg,
     PopToReg2,
     PopDiscard,
-    PushConst(usize),
+    PushConst(isize),
     PushFromTree,
     PushReg,
     PushReg2,
@@ -26,9 +26,9 @@ pub enum Instruction {
 }
 
 pub struct StackVmState {
-    pub stack: Vec<usize>,
-    pub reg: usize,
-    pub reg2: usize,
+    pub stack: Vec<isize>,
+    pub reg: isize,
+    pub reg2: isize,
     pub error: usize,
     pub instruction_counter: usize,
     pub instructions: Vec<Instruction>,
@@ -55,7 +55,7 @@ impl VM for StackVm {
                 "RegAddConst" => {
                     parse_whitespace(to_parse);
                     let val= parse_usize(to_parse)?;
-                    instructions.push(Instruction::RegAddConst(val));
+                    instructions.push(Instruction::RegAddConst(val as isize));
                 }
                 "Sub" => instructions.push(Instruction::Sub),
                 "Digit" => instructions.push(Instruction::Digit),
@@ -65,7 +65,7 @@ impl VM for StackVm {
                 "PushConst" => {
                     parse_whitespace(to_parse);
                     let val= parse_usize(to_parse)?;
-                    instructions.push(Instruction::PushConst(val));
+                    instructions.push(Instruction::PushConst(val as isize));
                 },
                 "PushFromTree"=>instructions.push(Instruction::PushFromTree),
                 "PushReg" => instructions.push(Instruction::PushReg),
@@ -131,7 +131,7 @@ impl VM for StackVm {
                     .ok()
                     .flatten()
                 {
-                    if let Ok(value) = node.data.parse::<usize>() {
+                    if let Ok(value) = node.data.parse::<isize>() {
                         state.stack.push(value);
                     } else {
                         state.error = 2; // Parsing error
@@ -161,7 +161,7 @@ impl VM for StackVm {
             }
             Instruction::Pow(base) => {
                 if let Some(val)=state.stack.pop(){
-                    let res = val * base.pow(state.reg as u32) + state.reg2;
+                    let res = val * base.pow(state.reg as u32)as isize + state.reg2;
                     state.stack.push(res);
                 }else { state.error = 1 }
             }
