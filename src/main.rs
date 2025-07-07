@@ -17,7 +17,7 @@ fn main() {
 
     let mut vm=NullVm::new();
     let mut state= NullVm::create_new_state();
-    let mut parser = Parser::new(&rules,&vm);
+    let mut parser = Parser::new_from_text(&rules, &vm);
 
     let graph = parser.parse(&script,&mut state).unwrap();
 

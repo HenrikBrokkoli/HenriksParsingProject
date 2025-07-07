@@ -44,7 +44,6 @@ where
     }
 
     pub fn parse_rules(&mut self) -> Result<&ParseRules<T>, ParserError> {
-        self.parse_special()?;
         loop {
             self.parse_whitespace();
             if self.parse_process.peek().is_none() {
@@ -56,36 +55,7 @@ where
         self.edit_rules()?;
         Ok(&self.parser_data.parse_rules)
     }
-
-    fn parse_special(&mut self) -> Result<(), ParserError> {
-        if self.parse_symbol('$').is_ok() {
-            let special_instruction = parse_var_name(&mut self.parse_process)?;
-            self.parse_symbol(':')?;
-            self.parse_whitespace();
-            if special_instruction == "IGNORE" {
-                if self.parse_symbol('#').is_ok() {
-                    self.parser_data.parse_rules.ignore = None
-                } else {
-                    let ignore_name = parse_var_name(&mut self.parse_process)?;
-                    let key = self
-                        .parser_data
-                        .get_or_add_element_key(&ElementVerbose::new(
-                            ignore_name,
-                            ElementType::NonTerminal,
-                        ));
-                    self.parser_data.parse_rules.ignore = Some(key);
-                }
-            } else {
-                return Err(ParserError::UnknownSpecialOperation {
-                    operation: special_instruction,
-                    pos: self.parse_process.cur_pos(),
-                });
-            }
-            self.parse_symbol(';')?;
-        };
-
-        Ok(())
-    }
+    
     fn edit_rules(&mut self) -> Result<(), ParserError> {
         let mut edited_rules = RuleMap::new();
         struct Action {

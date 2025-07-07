@@ -14,7 +14,7 @@ fn main() {
     //The state of the stack machine is not handled by the stack machine. We have to create it.
     let mut state= StackVm::create_new_state();
     //Using the stackmachine and the rulestring we create a parser.
-    let mut parser = Parser::new(&rules,&vm);
+    let mut parser = Parser::new_from_text(&rules, &vm);
     //In this example our script is very short and saved in a string. We want to do the following:
     //Put 1 on the stack, put two on the stack, take top two elements from stack (1 and 2) and add them and put the result on the stack
     //Then add three and then subtract four.

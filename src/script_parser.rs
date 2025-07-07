@@ -23,7 +23,6 @@ where
     T: VM,
 {
     vm: &'a T,
-    discard: Option<ElementIndex>,
     rules_with_steuermaps: HashMap<ElementIndex, NTRules<T>>,
     elements: Vec<ElementVerbose>,
 }
@@ -33,18 +32,21 @@ impl<'a, T> Parser<'a, T>
 where
     T: VM + 'a,
 {
-    pub fn new(rule_text: &str, vm: &'a T) -> Parser<'a, T> {
+    pub fn new_from_text(rule_text: &str, vm: &'a T) -> Parser<'a, T> {
         let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rule_text.chars().peekable());
         let mut rule_parser = RuleParser::new(&mut peekable, vm);
-        let rules = rule_parser.parse_rules().unwrap();
-        let discard = rules.ignore;
+        let _ = rule_parser.parse_rules().unwrap();
         let RuleParser { vm: _, parse_process: _parse_process, parser_data } = rule_parser;
         let elements = parser_data.get_elements_verbose();
         let first_dict = get_first_sets(&parser_data).unwrap();
         let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(), &first_dict, &parser_data).unwrap();
 
         let rules_with_steuermaps = get_steuermaps(&first_dict, &follow_dict, parser_data).unwrap();
-        Parser { vm, discard, rules_with_steuermaps, elements }
+        Parser { vm,  rules_with_steuermaps, elements }
+    }
+    
+    pub fn new(rules_with_steuermaps:HashMap<ElementIndex, NTRules<T>>,elements:Vec<ElementVerbose>,vm: &'a T) -> Parser<'a, T> {
+        Parser { vm,  rules_with_steuermaps, elements }
     }
 
     pub fn parse(&mut self, to_parse: &'a str, state: &mut T::Tstate) -> Result<Tree<String>, ParserError> {
@@ -135,7 +137,7 @@ mod tests {
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "a_terminalb_terminal";
         parser.parse(text_to_parse, &mut state).unwrap();
@@ -150,7 +152,7 @@ mod tests {
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "abcdeg";
         if let Err(x) = parser.parse(text_to_parse, &mut state) {
@@ -174,7 +176,7 @@ mod tests {
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "a_terminalc_terminal";
         parser.parse(text_to_parse, &mut state).unwrap();
@@ -189,7 +191,7 @@ mod tests {
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "a_terminalc_terminal";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
@@ -209,7 +211,7 @@ mod tests {
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "c_terminal";
         let tree = parser.parse(text_to_parse, &mut state).unwrap();
@@ -226,7 +228,7 @@ mod tests {
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "ab";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
@@ -244,7 +246,7 @@ mod tests {
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "aaa";
         let _graph = parser.parse(text_to_parse, &mut state).unwrap();
@@ -260,7 +262,7 @@ mod tests {
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "a";
         let _graph = parser.parse(text_to_parse, &mut state).unwrap();
@@ -275,7 +277,7 @@ mod tests {
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = " a b ";
         let _graph = parser.parse(text_to_parse, &mut state).unwrap();
@@ -290,7 +292,7 @@ mod tests {
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "a b";
         let _graph = parser.parse(text_to_parse, &mut state).unwrap();
@@ -308,7 +310,7 @@ mod tests {
 
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = " a  b   c  ";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
@@ -331,7 +333,7 @@ mod tests {
 
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "a    c";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
@@ -349,7 +351,7 @@ mod tests {
 
         let vm = CountingVm {};
         let mut state = CountingVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "aaa";
         let _graph = parser.parse(text_to_parse, &mut state).unwrap();
