@@ -106,6 +106,17 @@ where
             self.parse_rules.rules.insert(idx, start_rules);
         }
     }
+
+    pub fn set_productions(&mut self, idx:ElementIndex, terms:Vec<Vec<ElementIndex>>){
+        let existing=self.parse_rules.rules.get_mut(&idx);
+        if let Some(rule) = existing {
+            rule.possible_productions=vec![];
+        }
+        for term in terms{
+            self.add_production(idx,term)
+        }
+    }
+
     pub fn add_instructions(&mut self, idx: ElementIndex, inst: Vec<T::Tinstrution>){
         let existing=self.parse_rules.rules.get_mut(&idx);
         if let Some(rule) = existing {

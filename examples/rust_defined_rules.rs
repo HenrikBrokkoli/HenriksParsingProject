@@ -64,7 +64,7 @@ fn main() {
     // Define productions
 
     // start -> terms;
-    parser_data.add_production(start_idx, vec![term_idx]);
+    parser_data.add_production(start_idx, vec![terms_idx]);
 
     // terms -> term terms_s;
     parser_data.add_production(terms_idx, vec![term_idx, terms_s_idx]);
@@ -75,64 +75,39 @@ fn main() {
 
     // term -> add|sub|number|print;
     parser_data.add_production(term_idx, vec![add_idx]);
-    parser_data.add_production(term_idx,vec![sub_idx]);
-    parser_data.add_production(term_idx,vec![number_idx]);
-    parser_data.add_production(term_idx,vec![print_idx]);
-   
+    parser_data.add_production(term_idx, vec![sub_idx]);
+    parser_data.add_production(term_idx, vec![number_idx]);
+    parser_data.add_production(term_idx, vec![print_idx]);
 
     // print -> "print" {PopToReg;PrintReg;};
-    parser_data.add_production(print_idx,vec![print_term_idx]);
-    parser_data.add_instructions(print_idx, vec![Instruction::PopToReg, Instruction::PrintReg],
+    parser_data.add_production(print_idx, vec![print_term_idx]);
+    parser_data.add_instructions(
+        print_idx,
+        vec![Instruction::PopToReg, Instruction::PrintReg],
     );
-    
-    
 
     // add -> "+" {PopToReg; Add;};
-    let add_prod = Rc::new(Production::NotEmpty(vec![plus_idx]));
-    let add_rules = NonTerminalRules::new(
-        vec![add_prod],
-        None,
-        vec![Instruction::PopToReg, Instruction::Add],
-    );
-    parser_data.parse_rules.rules.insert(add_idx, add_rules);
+    parser_data.add_production(add_idx, vec![plus_idx]);
+    parser_data.add_instructions(add_idx, vec![Instruction::PopToReg, Instruction::Add]);
 
     // sub -> "-" {PopToReg;Sub;};
-    let sub_prod = Rc::new(Production::NotEmpty(vec![minus_idx]));
-    let sub_rules = NonTerminalRules::new(
-        vec![sub_prod],
-        None,
-        vec![Instruction::PopToReg, Instruction::Sub],
-    );
-    parser_data.parse_rules.rules.insert(sub_idx, sub_rules);
+
+    parser_data.add_production(sub_idx, vec![minus_idx]);
+    parser_data.add_instructions(sub_idx, vec![Instruction::PopToReg, Instruction::Sub]);
 
     // number-> digit number_s {PopDiscard;};
-    let number_prod = Rc::new(Production::NotEmpty(vec![digit_idx, number_s_idx]));
-    let number_rules =
-        NonTerminalRules::new(vec![number_prod], None, vec![Instruction::PopDiscard]);
-    parser_data
-        .parse_rules
-        .rules
-        .insert(number_idx, number_rules);
+    parser_data.add_production(number_idx, vec![digit_idx, number_s_idx]);
+    parser_data.add_instructions(number_idx, vec![Instruction::PopDiscard]);
 
     // number_s -> number_s_ | # {};
-    let number_s_prod1 = Rc::new(Production::NotEmpty(vec![number_s__idx]));
-    let number_s_prod2 = Rc::new(Production::Empty);
-    let number_s_rules = NonTerminalRules {
-        possible_productions: vec![number_s_prod1, number_s_prod2],
-        ignore: None,
-        instruction: vec![],
-    };
-    parser_data
-        .parse_rules
-        .rules
-        .insert(number_s_idx, number_s_rules);
+    parser_data.add_production(number_s_idx, vec![number_s__idx]);
+    parser_data.add_production(number_s_idx, vec![]);
 
     // number_s_ -> digit number_s {PopToReg;PopToReg2;PopDiscard;Pow 10;RegAddConst 1;PushReg;};
-    let number_s__prod = Rc::new(Production::NotEmpty(vec![digit_idx, number_s_idx]));
-    let number_s__rules = NonTerminalRules {
-        possible_productions: vec![number_s__prod],
-        ignore: None,
-        instruction: vec![
+    parser_data.add_production(number_s__idx, vec![digit_idx, number_s_idx]);
+    parser_data.add_instructions(
+        number_s__idx,
+        vec![
             Instruction::PopToReg,
             Instruction::PopToReg2,
             Instruction::PopDiscard,
@@ -140,83 +115,38 @@ fn main() {
             Instruction::RegAddConst(1),
             Instruction::PushReg,
         ],
-    };
-    parser_data
-        .parse_rules
-        .rules
-        .insert(number_s__idx, number_s__rules);
+    );
 
     // digit -> "0"|"1"|"2"|"3"|"4"|"5"|"6"|"7"|"8"|"9" {PushFromTree;PushConst 1;};
-    let digit_prod0 = Rc::new(Production::NotEmpty(vec![digit0_idx]));
-    let digit_prod1 = Rc::new(Production::NotEmpty(vec![digit1_idx]));
-    let digit_prod2 = Rc::new(Production::NotEmpty(vec![digit2_idx]));
-    let digit_prod3 = Rc::new(Production::NotEmpty(vec![digit3_idx]));
-    let digit_prod4 = Rc::new(Production::NotEmpty(vec![digit4_idx]));
-    let digit_prod5 = Rc::new(Production::NotEmpty(vec![digit5_idx]));
-    let digit_prod6 = Rc::new(Production::NotEmpty(vec![digit6_idx]));
-    let digit_prod7 = Rc::new(Production::NotEmpty(vec![digit7_idx]));
-    let digit_prod8 = Rc::new(Production::NotEmpty(vec![digit8_idx]));
-    let digit_prod9 = Rc::new(Production::NotEmpty(vec![digit9_idx]));
-    let digit_rules = NonTerminalRules {
-        possible_productions: vec![
-            digit_prod0,
-            digit_prod1,
-            digit_prod2,
-            digit_prod3,
-            digit_prod4,
-            digit_prod5,
-            digit_prod6,
-            digit_prod7,
-            digit_prod8,
-            digit_prod9,
+    parser_data.set_productions(
+        digit_idx,
+        vec![
+            vec![digit0_idx],
+            vec![digit1_idx],
+            vec![digit2_idx],
+            vec![digit3_idx],
+            vec![digit4_idx],
+            vec![digit5_idx],
+            vec![digit6_idx],
+            vec![digit7_idx],
+            vec![digit8_idx],
+            vec![digit9_idx],
         ],
-        ignore: None,
-        instruction: vec![Instruction::PushFromTree, Instruction::PushConst(1)],
-    };
-    parser_data.parse_rules.rules.insert(digit_idx, digit_rules);
+    );
+    parser_data.add_instructions(
+        digit_idx,
+        vec![Instruction::PushFromTree, Instruction::PushConst(1)],
+    );
 
     // whitespace -> " ";
-    let whitespace_prod = Rc::new(Production::NotEmpty(vec![space_idx]));
-    let whitespace_rules = NonTerminalRules {
-        possible_productions: vec![whitespace_prod],
-        ignore: None,
-        instruction: vec![],
-    };
-    parser_data
-        .parse_rules
-        .rules
-        .insert(whitespace_idx, whitespace_rules);
+    parser_data.add_production(whitespace_idx, vec![space_idx]);
 
     // whitespaces -> whitespace whitespaces_s;
-    let whitespaces_prod = Rc::new(Production::NotEmpty(vec![
-        whitespace_idx,
-        whitespaces_s_idx,
-    ]));
-    let whitespaces_rules = NonTerminalRules {
-        possible_productions: vec![whitespaces_prod],
-        ignore: None,
-        instruction: vec![],
-    };
-    parser_data
-        .parse_rules
-        .rules
-        .insert(whitespaces_idx, whitespaces_rules);
+    parser_data.add_production(whitespaces_idx, vec![whitespace_idx, whitespaces_s_idx]);
 
     // whitespaces_s -> whitespace whitespaces_s| #;
-    let whitespaces_s_prod1 = Rc::new(Production::NotEmpty(vec![
-        whitespace_idx,
-        whitespaces_s_idx,
-    ]));
-    let whitespaces_s_prod2 = Rc::new(Production::Empty);
-    let whitespaces_s_rules = NonTerminalRules {
-        possible_productions: vec![whitespaces_s_prod1, whitespaces_s_prod2],
-        ignore: None,
-        instruction: vec![],
-    };
-    parser_data
-        .parse_rules
-        .rules
-        .insert(whitespaces_s_idx, whitespaces_s_rules);
+    parser_data.add_production(whitespaces_s_idx, vec![whitespace_idx, whitespaces_s_idx]);
+    parser_data.add_production(whitespaces_s_idx, vec![]);
 
     // Calculate first and follow sets
     let first_dict = get_first_sets(&parser_data).unwrap();
