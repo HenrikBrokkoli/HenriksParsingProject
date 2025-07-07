@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::Chars;
 
-use crate::parser_data::{ElementIndex, ElementType, ElementVerbose, Production};
+use crate::parser_data::{ElementIndex, ElementType, ElementVerbose, ParserData, Production};
 use crate::tree::{NodeId, Tree};
 use crate::vms::VM;
 
@@ -43,6 +43,17 @@ where
 
         let rules_with_steuermaps = get_steuermaps(&first_dict, &follow_dict, parser_data).unwrap();
         Parser { vm,  rules_with_steuermaps, elements }
+    }
+
+    pub fn new_from_parser_data(parser_data: ParserData<T>,start_idx:ElementIndex, vm: &'a T) -> Parser<'a,T> {
+        let first_dict = get_first_sets(&parser_data).unwrap();
+        let follow_dict = get_follow_sets(start_idx, &first_dict, &parser_data).unwrap();
+
+        let elements_verbose = parser_data.get_elements_verbose();
+        let rules_with_steuermaps = get_steuermaps(&first_dict, &follow_dict, parser_data).unwrap();
+        
+        let parser = Parser::new(rules_with_steuermaps, elements_verbose, &vm);
+        parser
     }
     
     pub fn new(rules_with_steuermaps:HashMap<ElementIndex, NTRules<T>>,elements:Vec<ElementVerbose>,vm: &'a T) -> Parser<'a, T> {

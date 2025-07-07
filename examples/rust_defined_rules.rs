@@ -1,15 +1,9 @@
 extern crate HenriksParsingProject;
 
-use HenriksParsingProject::first_sets::get_first_sets;
-use HenriksParsingProject::follow_sets::get_follow_sets;
-use HenriksParsingProject::parser_data::{
-    ElementVerbose, NonTerminalRules, ParserData, Production,
-};
+use HenriksParsingProject::parser_data::ParserData;
 use HenriksParsingProject::script_parser::Parser;
-use HenriksParsingProject::steuer_map::get_steuermaps;
 use HenriksParsingProject::vms::VM;
 use HenriksParsingProject::vms::stack_vm::{Instruction, StackVm};
-use std::rc::Rc;
 
 fn main() {
     // Create a VM instance
@@ -134,8 +128,7 @@ fn main() {
         ],
     );
     parser_data.add_instructions(
-        digit_idx,
-        vec![Instruction::PushFromTree, Instruction::PushConst(1)],
+        digit_idx, vec![Instruction::PushFromTree, Instruction::PushConst(1)],
     );
 
     // whitespace -> " ";
@@ -148,16 +141,8 @@ fn main() {
     parser_data.add_production(whitespaces_s_idx, vec![whitespace_idx, whitespaces_s_idx]);
     parser_data.add_production(whitespaces_s_idx, vec![]);
 
-    // Calculate first and follow sets
-    let first_dict = get_first_sets(&parser_data).unwrap();
-    let follow_dict = get_follow_sets(start_idx, &first_dict, &parser_data).unwrap();
-
-    let elements_verbose = parser_data.get_elements_verbose();
-    // Get steuer maps
-    let rules_with_steuermaps = get_steuermaps(&first_dict, &follow_dict, parser_data).unwrap();
-
     // Create a parser with the rules
-    let mut parser = Parser::new(rules_with_steuermaps, elements_verbose, &vm);
+    let mut parser = Parser::new_from_parser_data(parser_data,start_idx,&vm);
 
     // Create a VM state
     let mut state = StackVm::create_new_state();
