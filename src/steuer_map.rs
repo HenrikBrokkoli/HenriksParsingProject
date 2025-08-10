@@ -1,3 +1,7 @@
+//! Construct LL(1) steuer maps for each non-terminal.
+//!
+//! A steuer map links a lookahead symbol to a specific production. This module
+//! turns FIRST/FOLLOW/Steuer information into executable tables used by Parser.
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 

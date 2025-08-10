@@ -1,3 +1,7 @@
+//! A very simple adjacency structure using index-based nodes and edges.
+//!
+//! This minimal graph is used internally (e.g., during FOLLOW set computations)
+//! to avoid dependencies while keeping operations fast and predictable.
 //initial idea stolen from here:
 //http://smallcultfollowing.com/babysteps/blog/2015/04/06/modeling-graphs-in-rust-using-vector-indices/
 enum ThingWithNextEdge {

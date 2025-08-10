@@ -1,3 +1,8 @@
+//! High-level LL(1) script parser built from grammar rules and steuer maps.
+//!
+//! The Parser type orchestrates rule parsing, FIRST/FOLLOW computation, and
+//! drives a VM by turning matched productions into instructions.
+
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::Chars;

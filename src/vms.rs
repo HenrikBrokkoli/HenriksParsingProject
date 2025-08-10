@@ -1,3 +1,7 @@
+//! VM trait and reference implementations.
+//!
+//! This module defines the VM trait and provides several example VMs (e.g.,
+//! stack-based variants) to use with the parser.
 use crate::errors::ParserError;
 use crate::peekables::{ParseProcess, TPeekable};
 use crate::tree::{NodeId, Tree};

@@ -33,6 +33,10 @@
 //! let result = parser.parse(script, &mut state);
 //! ```
 //!
+//! ### More examples
+//! You can find runnable examples in the repository:
+//! <https://github.com/henrikdiekmann/henriks-parsing-project/tree/main/examples>
+//!
 //! ## Module Structure
 //!
 //! - `script_parser`: Core parser implementation
@@ -53,7 +57,6 @@ pub mod follow_sets;
 pub mod steuer_sets;
 pub mod steuer_map;
 pub mod errors;
-pub mod virtual_machine;
 pub mod peekables;
 pub mod parse_funcs;
 pub mod vms;

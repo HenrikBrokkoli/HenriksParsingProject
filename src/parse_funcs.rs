@@ -1,3 +1,9 @@
+//! Low-level helper functions used by the grammar and script parsers.
+//!
+//! These functions parse small lexical units (whitespace, digits, identifiers)
+//! from a ParseProcess and are reusable building blocks for higher-level
+//! parsers.
+
 use crate::errors::ParserError;
 use crate::errors::ParserError::{EndOfCharsError, Impossible, UnexpectedCharError};
 use crate::peekables::{ParseProcess, TPeekable};

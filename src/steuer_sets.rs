@@ -1,3 +1,8 @@
+//! Compute Steuer sets from FIRST and FOLLOW sets.
+//!
+//! Steuer sets determine which production to pick based on the next input
+//! symbol (including termination). They are a key ingredient in the LL(1)
+//! steuer map construction.
 use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::iter::FromIterator;

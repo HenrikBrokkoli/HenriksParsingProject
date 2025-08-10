@@ -1,3 +1,9 @@
+//! Data structures that represent grammar elements, productions and rules.
+//!
+//! This module provides ParserData and related types used to construct parsers
+//! programmatically or as the result of parsing a grammar description. It is the
+//! core in-memory representation used by the Parser.
+
 use crate::peekables::{ParseProcess, PeekableWrapper};
 use crate::vms::VM;
 use std::collections::HashMap;
@@ -6,7 +12,13 @@ use std::rc::Rc;
 use std::str::Chars;
 use crate::vms::stack_vm::Instruction;
 
-///Contains the ParseRules, the vector of elements and a Hashmap of ElementData
+/// Container for grammar rules and elements used by the parser.
+///
+/// ParserData stores the set of non-terminals and terminals, their metadata
+/// and the productions associated with each non-terminal. You can either build
+/// it manually (see examples in examples/rust_defined_rules.rs) or obtain it
+/// from the rule parser. It is generic over a VM because productions may carry
+/// VM-specific instruction payloads.
 pub struct ParserData<T>
 where
     T: VM,

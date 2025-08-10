@@ -1,3 +1,6 @@
+//! Test-only helpers for building sets in assertions.
+//!
+//! Not part of the public API guarantees.
 use std::collections::HashSet;
 use crate::sets::{SetMemberWithEmpty, SetMember};
 

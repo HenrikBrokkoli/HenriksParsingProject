@@ -1,3 +1,9 @@
+//! Peekable adapters used by the rule and script parsers.
+//!
+//! Provides a generic TPeekable trait and wrappers that allow peeking and
+//! conditional consumption while tracking positions, which is helpful for
+//! error reporting during parsing.
+
 use std::iter::Peekable;
 
 pub trait TPeekable: Iterator {

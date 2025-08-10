@@ -1,3 +1,9 @@
+//! Parser for BNF-like grammar descriptions used to construct ParserData.
+//!
+//! This module reads textual grammar rules, supports optional instruction
+//! sections in braces, and builds the internal representation used by the
+//! runtime parser.
+
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::mem;

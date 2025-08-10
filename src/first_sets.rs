@@ -1,3 +1,7 @@
+//! Compute FIRST sets for elements and productions.
+//!
+//! This module calculates FIRST sets used by the LL(1) machinery and
+//! is consumed by follow_sets and steuer_sets.
 use crate::errors::GrammarError;
 use crate::parser_data::{ElementIndex, ElementType, ParserData, Production};
 use std::collections::{HashMap, HashSet};

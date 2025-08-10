@@ -1,3 +1,7 @@
+//! Shared set types used in FIRST/FOLLOW/Steuer computations.
+//!
+//! Provides SetMember and SetMemberWithEmpty and helpers to convert and
+//! collect them in hash maps/sets.
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fmt;

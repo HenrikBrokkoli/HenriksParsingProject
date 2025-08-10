@@ -1,3 +1,9 @@
+//! Compute FOLLOW sets for non-terminals.
+//!
+//! This module builds a dependency graph between non-terminals and propagates
+//! terminal symbols according to LL(1) FOLLOW rules. The resulting map is used
+//! when constructing the parsing steuer maps.
+
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::iter::FromIterator;
@@ -15,6 +21,11 @@ use crate::simple_graph::NodeData;
 pub type Graph = GraphNamedNodes<HashSet<SetMember>>;
 
 
+/// Computes the FOLLOW sets for all non-terminals.
+///
+/// The start symbol's FOLLOW set is initialized with Terminate and information
+/// is propagated along a graph built from productions. Returns a map from
+/// non-terminal index to the set of terminal symbols that may follow it.
 pub fn get_follow_sets<T>(start: ElementIndex, first_sets: &NamedSets, parser_data: &ParserData<T>) -> Result<NamedSetsNoEmpty, GrammarError> where T: VM {
     let mut follow_graph = make_graph_with_index(&parser_data.parse_rules.rules)?;
     follow_graph.get_node_mut(start)?.data.insert(SetMember::Terminate);

@@ -1,3 +1,9 @@
+//! Error types used across the parsing and grammar modules.
+//!
+//! ParserError represents runtime parsing or VM execution errors, while
+//! GrammarError captures issues in the grammar itself (missing sets, invalid
+//! graph operations, etc.). These are surfaced by various APIs in this crate.
+
 use std::fmt;
 
 use crate::parser_data::ElementIndex;
@@ -5,6 +11,7 @@ use crate::tree::TreeError;
 
 
 #[derive(Debug)]
+/// Errors that can occur during parsing or while executing VM instructions.
 pub enum ParserError {
     UnexpectedCharError { chr: char, pos: usize, expected: String },
     EndOfCharsError{pos: usize},
@@ -45,6 +52,7 @@ impl From<TreeError> for ParserError{
 }
 
 #[derive(Debug)]
+/// Errors that indicate malformed or inconsistent grammar constructs.
 pub enum GrammarError {
     MissingFollowSet { index: ElementIndex },
     MissingElementForIndex { index: ElementIndex },

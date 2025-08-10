@@ -1,3 +1,9 @@
+//! A graph wrapper that assigns stable names to nodes.
+//!
+//! This is used by FOLLOW set computation to reference nodes by element indexes
+//! and propagate data along edges while keeping the underlying graph indices
+//! internal.
+
 use std::collections::HashMap;
 use std::fmt;
 
