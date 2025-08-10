@@ -1,6 +1,10 @@
 # Henrik's Parsing Project
 
-This project provides tools to build LL(1) parsers from a Backus-Naur-Form (BNF) like syntax. These generated parsers can be coupled with a virtual machine to execute arbitrary code, allowing you to build simple programming languages that can be executed.
+A Rust library for building LL(1) parsers from a Backus-Naur-Form (BNF) like syntax. These generated parsers can be coupled with a virtual machine to execute arbitrary code, allowing you to build simple programming languages that can be executed.
+
+[![Crate](https://img.shields.io/crates/v/henriks-parsing-project.svg)](https://crates.io/crates/henriks-parsing-project)
+[![API](https://docs.rs/henriks-parsing-project/badge.svg)](https://docs.rs/henriks-parsing-project)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
 
@@ -9,7 +13,26 @@ Henrik's Parsing Project allows you to:
 2. Create a virtual machine (VM) to execute code written in your language
 3. Parse and execute programs in your custom language
 
-This is an ongoing project and should not be used for anything serious.
+## Installation
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+henriks-parsing-project = "0.1.0"
+```
+
+Then import the library in your code:
+
+```rust
+use henriks_parsing_project::script_parser::Parser;
+use henriks_parsing_project::vms::VM;
+```
+
+## Version Compatibility
+
+- Requires Rust 2024 edition or later
+- This is an ongoing project and the API may change in future versions
 
 ## How to Write Rule Files
 
@@ -33,6 +56,56 @@ Expressions can contain:
 - Alternatives (using `|`): `option1 | option2`
 - Empty/epsilon production (using `#`): `optional_part -> something | #`
 - VM actions (in curly braces): `number -> digit {}`
+### VM Actions
+
+There are two ways to specify VM actions:
+
+1. **By rule name**: The VM can generate instructions based on the production name.
+
+   ```
+   add -> "+" {};  // The VM maps the rule name "add" to an Add instruction
+   ```
+
+2. **By code in curly braces**: The VM can parse and execute code inside curly braces.
+
+   ```
+   number -> digit { push_value($1) };  // The VM parses and executes "push_value($1)"
+   ```
+
+The VM's `parse_instructions` method receives both the rule name and the content of the curly braces,
+allowing it to use either or both to determine what instructions to generate.
+
+#### Example: Rule-based Instructions
+
+In a rule-based approach, the VM maps production names to specific instructions:
+
+1. When the parser encounters a rule like `add -> "+" {};`, it calls the VM's `parse_instructions` method with:
+   - `prod_name` = "add"
+   - `to_parse` = empty (or ignored)
+
+2. The VM implementation would then map the production name to an instruction:
+   - "add" → Add instruction
+   - "sub" → Subtract instruction
+   - "print" → Print instruction
+
+This approach is simple and works well for basic VMs where each grammar rule corresponds to a specific instruction.
+
+#### Example: Parsing Code in Curly Braces
+
+For more complex VMs, you might want to parse custom code inside the curly braces:
+
+1. When the parser encounters a rule like `number -> digit { push_value($1) };`, it calls the VM's `parse_instructions` method with:
+   - `prod_name` = "number"
+   - `to_parse` = " push_value($1) "
+
+2. The VM implementation would then parse the content of the curly braces:
+   - Extract the code " push_value($1) "
+   - Parse it to determine what instruction(s) to generate
+   - Return the appropriate instruction(s)
+
+This approach is more flexible and allows for more complex VM implementations where you might need to pass parameters or execute custom code.
+
+This section should be inserted between the "Expressions" section and the "Special Directives" section in the README.md file.
 
 ### Special Directives
 
@@ -200,8 +273,8 @@ impl VM for SimpleStackVm {
 
 ```rust
 use std::fs;
-use HenriksParsingProject::script_parser::Parser;
-use HenriksParsingProject::vms::VM;
+use henriks_parsing_project::script_parser::Parser;
+use henriks_parsing_project::vms::VM;
 
 // Read the grammar rules
 let rules = fs::read_to_string("my_language.txt").expect("Unable to read rule file");
@@ -213,7 +286,7 @@ let vm = MyCustomVm{};
 let mut state = MyCustomVm::create_new_state();
 
 // Create a parser with the rules and VM
-let mut parser = Parser::new(&rules, &vm);
+let mut parser = Parser::new_from_text(&rules, &vm);
 
 // Parse and execute a script
 let script = "your script here";
@@ -226,9 +299,9 @@ Here's a complete example using the SimpleStackVm:
 
 ```rust
 use std::fs;
-use HenriksParsingProject::script_parser::Parser;
-use HenriksParsingProject::vms::simple_stack_vm::SimpleStackVm;
-use HenriksParsingProject::vms::VM;
+use henriks_parsing_project::script_parser::Parser;
+use henriks_parsing_project::vms::simple_stack_vm::SimpleStackVm;
+use henriks_parsing_project::vms::VM;
 
 fn main() {
     // Read the grammar rules
@@ -242,7 +315,7 @@ fn main() {
     let mut state = SimpleStackVm::create_new_state();
 
     // Create a parser
-    let mut parser = Parser::new(&rules, &vm);
+    let mut parser = Parser::new_from_text(&rules, &vm);
 
     // Parse and execute a script
     // This script: puts 1 and 2 on stack, adds them, adds 3, subtracts 4, prints result

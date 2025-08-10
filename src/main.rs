@@ -1,9 +1,18 @@
 extern crate core;
-extern crate HenriksParsingProject;
 
 use std::{env, fs};
-use HenriksParsingProject::script_parser::Parser;
-use HenriksParsingProject::vms::{NullVm,VM};
+use henriks_parsing_project::script_parser::Parser;
+use henriks_parsing_project::vms::{NullVm, VM};
+
+/// Main entry point for the command-line tool.
+/// 
+/// Usage: henriks-parsing-project <rule_file> <script_file>
+/// 
+/// This program takes two arguments:
+/// 1. Path to a file containing grammar rules
+/// 2. Path to a file containing a script to parse
+///
+/// It parses the script according to the grammar rules and returns the parse tree.
 
 
 
@@ -22,8 +31,3 @@ fn main() {
     let graph = parser.parse(&script,&mut state).unwrap();
 
 }
-
-
-
-
-

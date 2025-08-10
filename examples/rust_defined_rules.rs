@@ -1,9 +1,9 @@
-extern crate HenriksParsingProject;
+extern crate henriks_parsing_project;
 
-use HenriksParsingProject::parser_data::ParserData;
-use HenriksParsingProject::script_parser::Parser;
-use HenriksParsingProject::vms::VM;
-use HenriksParsingProject::vms::stack_vm::{Instruction, StackVm};
+use henriks_parsing_project::parser_data::ParserData;
+use henriks_parsing_project::script_parser::Parser;
+use henriks_parsing_project::vms::VM;
+use henriks_parsing_project::vms::stack_vm::{Instruction, StackVm};
 
 fn main() {
     // Create a VM instance

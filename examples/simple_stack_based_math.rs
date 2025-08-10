@@ -1,9 +1,9 @@
-extern crate HenriksParsingProject;
+extern crate henriks_parsing_project;
 
 use std::fs;
-use HenriksParsingProject::script_parser::Parser;
-use HenriksParsingProject::vms::simple_stack_vm::SimpleStackVm;
-use HenriksParsingProject::vms::VM;
+use henriks_parsing_project::script_parser::Parser;
+use henriks_parsing_project::vms::simple_stack_vm::SimpleStackVm;
+use henriks_parsing_project::vms::VM;
 
 fn main() {
 

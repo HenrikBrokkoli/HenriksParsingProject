@@ -18,12 +18,42 @@ use crate::steuer_map::{get_steuermaps, NTRules};
 
 //TODO detect left recursive rules that lead to nonterminating of get_first_sets
 
+/// The Parser is the core component of the library, responsible for parsing input text
+/// according to grammar rules and executing associated VM instructions.
+///
+/// The Parser works with an LL(1) parsing algorithm, using first and follow sets to
+/// determine which production to use when parsing a non-terminal.
+///
+/// # Example
+///
+/// ```rust
+/// use henriks_parsing_project::script_parser::Parser;
+/// use henriks_parsing_project::vms::NullVm;
+/// use henriks_parsing_project::vms::VM;
+///
+/// // Define grammar rules
+/// let rules = "start -> \"hello\" \"world\";";
+///
+/// // Create a VM
+/// let vm = NullVm::new();
+/// let mut state = NullVm::create_new_state();
+///
+/// // Create a parser
+/// let mut parser = Parser::new_from_text(rules, &vm);
+///
+/// // Parse a script
+/// let script = "helloworld";
+/// let result = parser.parse(script, &mut state);
+/// ```
 pub struct Parser<'a, T:>
 where
     T: VM,
 {
+    /// Reference to the virtual machine that will execute instructions
     vm: &'a T,
+    /// Mapping from non-terminal indices to their rules and steuer maps
     rules_with_steuermaps: HashMap<ElementIndex, NTRules<T>>,
+    /// List of all grammar elements (terminals and non-terminals)
     elements: Vec<ElementVerbose>,
 }
 
@@ -32,6 +62,30 @@ impl<'a, T> Parser<'a, T>
 where
     T: VM + 'a,
 {
+    /// Creates a new Parser from a string containing grammar rules.
+    ///
+    /// This method parses the rules, computes first and follow sets, and creates steuer maps
+    /// for efficient LL(1) parsing.
+    ///
+    /// # Arguments
+    ///
+    /// * `rule_text` - A string containing the grammar rules in BNF-like syntax
+    /// * `vm` - A reference to a virtual machine that implements the VM trait
+    ///
+    /// # Returns
+    ///
+    /// A new Parser instance configured with the provided rules and VM
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use henriks_parsing_project::script_parser::Parser;
+    /// use henriks_parsing_project::vms::NullVm;
+    ///
+    /// let rules = "start -> \"hello\" \"world\";";
+    /// let vm = NullVm::new();
+    /// let parser = Parser::new_from_text(rules, &vm);
+    /// ```
     pub fn new_from_text(rule_text: &str, vm: &'a T) -> Parser<'a, T> {
         let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rule_text.chars().peekable());
         let mut rule_parser = RuleParser::new(&mut peekable, vm);
@@ -45,21 +99,75 @@ where
         Parser { vm,  rules_with_steuermaps, elements }
     }
 
-    pub fn new_from_parser_data(parser_data: ParserData<T>,start_idx:ElementIndex, vm: &'a T) -> Parser<'a,T> {
+    /// Creates a new Parser from pre-parsed ParserData.
+    ///
+    /// This method is useful when you have already parsed the grammar rules
+    /// and want to create a parser with a different VM or starting symbol.
+    ///
+    /// # Arguments
+    ///
+    /// * `parser_data` - The pre-parsed grammar data
+    /// * `start_idx` - The index of the starting non-terminal
+    /// * `vm` - A reference to a virtual machine that implements the VM trait
+    ///
+    /// # Returns
+    ///
+    /// A new Parser instance configured with the provided parser data and VM
+    pub fn new_from_parser_data(parser_data: ParserData<T>, start_idx: ElementIndex, vm: &'a T) -> Parser<'a,T> {
         let first_dict = get_first_sets(&parser_data).unwrap();
         let follow_dict = get_follow_sets(start_idx, &first_dict, &parser_data).unwrap();
 
         let elements_verbose = parser_data.get_elements_verbose();
         let rules_with_steuermaps = get_steuermaps(&first_dict, &follow_dict, parser_data).unwrap();
-        
+
         let parser = Parser::new(rules_with_steuermaps, elements_verbose, &vm);
         parser
     }
-    
-    pub fn new(rules_with_steuermaps:HashMap<ElementIndex, NTRules<T>>,elements:Vec<ElementVerbose>,vm: &'a T) -> Parser<'a, T> {
-        Parser { vm,  rules_with_steuermaps, elements }
+
+    /// Creates a new Parser from pre-computed components.
+    ///
+    /// This is a low-level constructor that takes already computed steuer maps and elements.
+    ///
+    /// # Arguments
+    ///
+    /// * `rules_with_steuermaps` - Mapping from non-terminal indices to their rules and steuer maps
+    /// * `elements` - List of all grammar elements (terminals and non-terminals)
+    /// * `vm` - A reference to a virtual machine that implements the VM trait
+    ///
+    /// # Returns
+    ///
+    /// A new Parser instance with the provided components
+    pub fn new(rules_with_steuermaps: HashMap<ElementIndex, NTRules<T>>, elements: Vec<ElementVerbose>, vm: &'a T) -> Parser<'a, T> {
+        Parser { vm, rules_with_steuermaps, elements }
     }
 
+    /// Parses a string according to the grammar rules and executes VM instructions.
+    ///
+    /// This method takes a string to parse and a mutable reference to a VM state,
+    /// parses the string according to the grammar rules, and returns a parse tree.
+    ///
+    /// # Arguments
+    ///
+    /// * `to_parse` - The string to parse
+    /// * `state` - A mutable reference to the VM state
+    ///
+    /// # Returns
+    ///
+    /// A Result containing either the parse tree or a ParserError
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use henriks_parsing_project::script_parser::Parser;
+    /// use henriks_parsing_project::vms::NullVm;
+    ///
+    /// let rules = "start -> \"hello\" \"world\";";
+    /// let vm = NullVm::new();
+    /// let mut state = NullVm::create_new_state();
+    /// let mut parser = Parser::new_from_text(rules, &vm);
+    ///
+    /// let result = parser.parse("helloworld", &mut state);
+    /// ```
     pub fn parse(&mut self, to_parse: &'a str, state: &mut T::Tstate) -> Result<Tree<String>, ParserError> {
         let mut peekable = PeekableWrapper::<Chars>::new(to_parse.chars().peekable());
         let mut to_parse = ParseProcess::<PeekableWrapper<Chars>>::new(&mut peekable, None, None);
@@ -85,7 +193,7 @@ where
         let fitting_production: &Rc<Production>= self.get_fitting_production(to_parse, el_index, &cur)?;
 
         let id=tree.add_node(String::from(""),current_node)?;
-     
+
         let prod = &**fitting_production;
         match prod {
             Production::NotEmpty(prod_not_empty) => {
@@ -104,7 +212,7 @@ where
             }
             Production::Empty => {}
         };
-     
+
         self.run_instructions(tree,id, &nt_rule.instruction, state);
 
         Ok(())
@@ -208,7 +316,7 @@ mod tests {
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
         println!("hallo");
         println!("{}",format!("{graph:?}"));
-        
+
         let res = graph.get_by_path_or_none(NodeId::new(0,0), vec![0, 0].into_iter()).unwrap().unwrap();
         assert_eq!("a_terminal", res.data)
     }
@@ -369,14 +477,3 @@ mod tests {
         assert_eq!(3, state);
     }
 }
-
-
-
-
-
-
-
-
-
-
-

@@ -1,3 +1,47 @@
+//! # Henrik's Parsing Project
+//!
+//! A library for building LL(1) parsers from a Backus-Naur-Form (BNF) like syntax.
+//! These generated parsers can be coupled with a virtual machine to execute arbitrary code,
+//! allowing you to build simple programming languages that can be executed.
+//!
+//! ## Features
+//!
+//! - Define custom language syntax using a BNF-like grammar
+//! - Create a virtual machine (VM) to execute code written in your language
+//! - Parse and execute programs in your custom language
+//!
+//! ## Example
+//!
+//! ```rust
+//! use std::fs;
+//! use henriks_parsing_project::script_parser::Parser;
+//! use henriks_parsing_project::vms::NullVm;
+//! use henriks_parsing_project::vms::VM;
+//!
+//! // Read the grammar rules
+//! let rules = "start -> \"hello\" \"world\";";
+//!
+//! // Create a VM
+//! let vm = NullVm::new();
+//! let mut state = NullVm::create_new_state();
+//!
+//! // Create a parser
+//! let mut parser = Parser::new_from_text(rules, &vm);
+//!
+//! // Parse a script
+//! let script = "helloworld";
+//! let result = parser.parse(script, &mut state);
+//! ```
+//!
+//! ## Module Structure
+//!
+//! - `script_parser`: Core parser implementation
+//! - `rule_parsing`: Parsing of grammar rules
+//! - `vms`: Virtual machine implementations
+//! - `parser_data`: Data structures for parser
+//! - `first_sets`, `follow_sets`: LL(1) parsing algorithm components
+//! - `errors`: Error types and handling
+
 pub mod simple_graph;
 pub mod named_graph;
 pub mod rule_parsing;
