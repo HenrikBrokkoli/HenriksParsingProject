@@ -150,7 +150,13 @@ pub trait VM {
     /// * `cur_node` - The current node in the parse tree
     /// * `instruction` - The instruction to execute
     /// * `state` - The VM state to modify
-    fn execute_instruction(&self, tree: &mut Tree<String>, cur_node: NodeId, instruction: &Self::Tinstrution, state: &mut Self::Tstate);
+    fn execute_instruction(
+        &self,
+        tree: &mut Tree<String>,
+        cur_node: NodeId,
+        instruction: &Self::Tinstrution,
+        state: &mut Self::Tstate,
+    );
 
     /// Creates a new VM state.
     ///
@@ -245,7 +251,13 @@ impl VM for NullVm {
     /// * `_` - Ignored node ID
     /// * `_` - Ignored instruction
     /// * `_` - Ignored state
-    fn execute_instruction(&self, _: &mut Tree<String>, _: NodeId, _: &Self::Tinstrution, _: &mut usize) {
+    fn execute_instruction(
+        &self,
+        _: &mut Tree<String>,
+        _: NodeId,
+        _: &Self::Tinstrution,
+        _: &mut usize,
+    ) {
         // Do nothing
     }
 

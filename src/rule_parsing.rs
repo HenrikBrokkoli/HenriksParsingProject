@@ -29,7 +29,7 @@ where
 {
     pub vm: &'vm T,
     pub parse_process: Ppp<'pp>,
-    pub parser_data: ParserData<T>
+    pub parser_data: ParserData<T>,
 }
 
 impl<'vm, 'pp, T> RuleParser<'vm, 'pp, T>
@@ -61,7 +61,7 @@ where
         self.edit_rules()?;
         Ok(&self.parser_data.parse_rules)
     }
-    
+
     fn edit_rules(&mut self) -> Result<(), ParserError> {
         let mut edited_rules = RuleMap::new();
         struct Action {

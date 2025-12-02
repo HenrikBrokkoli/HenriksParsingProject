@@ -128,7 +128,8 @@ fn main() {
         ],
     );
     parser_data.add_instructions(
-        digit_idx, vec![Instruction::PushFromTree, Instruction::PushConst(1)],
+        digit_idx,
+        vec![Instruction::PushFromTree, Instruction::PushConst(1)],
     );
 
     // whitespace -> " ";
@@ -142,7 +143,7 @@ fn main() {
     parser_data.add_production(whitespaces_s_idx, vec![]);
 
     // Create a parser with the rules
-    let mut parser = Parser::new_from_parser_data(parser_data,start_idx,&vm);
+    let mut parser = Parser::new_from_parser_data(parser_data, start_idx, &vm);
 
     // Create a VM state
     let mut state = StackVm::create_new_state();
