@@ -1,6 +1,6 @@
 use crate::errors::ParserError;
 use crate::peekables::{ParseProcess, TPeekable};
-use crate::tree::{Node, NodeId, Tree};
+use crate::tree::{NodeId, Tree};
 use crate::vms::VM;
 
 pub struct SimpleStackVmState {
@@ -25,7 +25,7 @@ pub enum Instruction {
     PrintReg,
     PrintReg2,
     PrintError,
-    Pow(usize)
+    Pow(usize),
 }
 
 pub struct SimpleStackVm {}
@@ -49,10 +49,17 @@ impl VM for SimpleStackVm {
             "add" => vec![Instruction::PopToReg, Instruction::Add],
             "sub" => vec![Instruction::PopToReg, Instruction::Sub],
             "number" => vec![Instruction::PopDiscard],
-            "digit" => vec![Instruction::PushFromTree,Instruction::PushConst(1)],
-            "number_s_" => vec![Instruction::PopToReg, Instruction::PopToReg2, Instruction::PopDiscard, Instruction::Pow(10),Instruction::RegAddConst(1),Instruction::PushReg],
+            "digit" => vec![Instruction::PushFromTree, Instruction::PushConst(1)],
+            "number_s_" => vec![
+                Instruction::PopToReg,
+                Instruction::PopToReg2,
+                Instruction::PopDiscard,
+                Instruction::Pow(10),
+                Instruction::RegAddConst(1),
+                Instruction::PushReg,
+            ],
             "print" => vec![Instruction::PopToReg, Instruction::PrintReg],
-            _ =>  vec![],
+            _ => vec![],
         };
         Ok(instruction)
     }
@@ -75,7 +82,7 @@ impl VM for SimpleStackVm {
             }
             Instruction::Sub => {
                 if let Some(var) = state.stack.pop() {
-                    let res =  var - state.reg;
+                    let res = var - state.reg;
                     state.stack.push(res);
                 } else {
                     state.error = 1
@@ -121,34 +128,41 @@ impl VM for SimpleStackVm {
                 } else {
                     state.error = 1
                 }
-            },
+            }
             Instruction::PrintReg => {
-                let reg= state.reg;
+                let reg = state.reg;
                 println!("{reg}");
             }
             Instruction::PrintReg2 => {
-                let reg= state.reg2;
+                let reg = state.reg2;
                 println!("{reg}");
             }
             Instruction::PrintError => {
-                let reg= state.error;
+                let reg = state.error;
                 println!("{reg}");
             }
             Instruction::Pow(base) => {
-                if let Some(val)=state.stack.pop(){
+                if let Some(val) = state.stack.pop() {
                     let res = val * base.pow(state.reg as u32) + state.reg2;
                     state.stack.push(res);
-                }else { state.error = 1 }
+                } else {
+                    state.error = 1
+                }
             }
-            Instruction::PushReg => {state.stack.push(state.reg)}
-            Instruction::PushReg2 => {state.stack.push(state.reg2)}
+            Instruction::PushReg => state.stack.push(state.reg),
+            Instruction::PushReg2 => state.stack.push(state.reg2),
             Instruction::RegAddConst(c) => {
-                state.reg= state.reg + c;
+                state.reg = state.reg + c;
             }
         }
     }
 
     fn create_new_state() -> Self::Tstate {
-        SimpleStackVmState { stack: vec![],reg:0,reg2:0,error:0 }
+        SimpleStackVmState {
+            stack: vec![],
+            reg: 0,
+            reg2: 0,
+            error: 0,
+        }
     }
 }

@@ -1,8 +1,13 @@
+//! High-level LL(1) script parser built from grammar rules and steuer maps.
+//!
+//! The Parser type orchestrates rule parsing, FIRST/FOLLOW computation, and
+//! drives a VM by turning matched productions into instructions.
+
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::Chars;
 
-use crate::parser_data::{ElementIndex, ElementType, ElementVerbose, Production};
+use crate::parser_data::{ElementIndex, ElementType, ElementVerbose, ParserData, Production};
 use crate::tree::{NodeId, Tree};
 use crate::vms::VM;
 
@@ -14,65 +19,249 @@ use crate::follow_sets::get_follow_sets;
 use crate::peekables::{ParseProcess, PeekableWrapper, TPeekable};
 use crate::rule_parsing::RuleParser;
 use crate::sets::SetMember;
-use crate::steuer_map::{get_steuermaps, NTRules};
+use crate::steuer_map::{NTRules, get_steuermaps};
 
 //TODO detect left recursive rules that lead to nonterminating of get_first_sets
 
-pub struct Parser<'a, T:>
+/// The Parser is the core component of the library, responsible for parsing input text
+/// according to grammar rules and executing associated VM instructions.
+///
+/// The Parser works with an LL(1) parsing algorithm, using first and follow sets to
+/// determine which production to use when parsing a non-terminal.
+///
+/// # Example
+///
+/// ```rust
+/// use henriks_parsing_project::script_parser::Parser;
+/// use henriks_parsing_project::vms::NullVm;
+/// use henriks_parsing_project::vms::VM;
+///
+/// // Define grammar rules
+/// let rules = "start -> \"hello\" \"world\";";
+///
+/// // Create a VM
+/// let vm = NullVm::new();
+/// let mut state = NullVm::create_new_state();
+///
+/// // Create a parser
+/// let mut parser = Parser::new_from_text(rules, &vm);
+///
+/// // Parse a script
+/// let script = "helloworld";
+/// let result = parser.parse(script, &mut state);
+/// ```
+pub struct Parser<'a, T>
 where
     T: VM,
 {
+    /// Reference to the virtual machine that will execute instructions
     vm: &'a T,
-    discard: Option<ElementIndex>,
+    /// Mapping from non-terminal indices to their rules and steuer maps
     rules_with_steuermaps: HashMap<ElementIndex, NTRules<T>>,
+    /// List of all grammar elements (terminals and non-terminals)
     elements: Vec<ElementVerbose>,
 }
-
 
 impl<'a, T> Parser<'a, T>
 where
     T: VM + 'a,
 {
-    pub fn new(rule_text: &str, vm: &'a T) -> Parser<'a, T> {
-        let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rule_text.chars().peekable());
+    /// Creates a new Parser from a string containing grammar rules.
+    ///
+    /// This method parses the rules, computes first and follow sets, and creates steuer maps
+    /// for efficient LL(1) parsing.
+    ///
+    /// # Arguments
+    ///
+    /// * `rule_text` - A string containing the grammar rules in BNF-like syntax
+    /// * `vm` - A reference to a virtual machine that implements the VM trait
+    ///
+    /// # Returns
+    ///
+    /// A new Parser instance configured with the provided rules and VM
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use henriks_parsing_project::script_parser::Parser;
+    /// use henriks_parsing_project::vms::NullVm;
+    ///
+    /// let rules = "start -> \"hello\" \"world\";";
+    /// let vm = NullVm::new();
+    /// let parser = Parser::new_from_text(rules, &vm);
+    /// ```
+    pub fn new_from_text(rule_text: &str, vm: &'a T) -> Parser<'a, T> {
+        let mut peekable =
+            PeekableWrapper::<PeekableWrapper<Chars>>::new(rule_text.chars().peekable());
         let mut rule_parser = RuleParser::new(&mut peekable, vm);
-        let rules = rule_parser.parse_rules().unwrap();
-        let discard = rules.ignore;
-        let RuleParser { vm: _, parse_process: _parse_process, parser_data } = rule_parser;
+        let _ = rule_parser.parse_rules().unwrap();
+        let RuleParser {
+            vm: _,
+            parse_process: _parse_process,
+            parser_data,
+        } = rule_parser;
         let elements = parser_data.get_elements_verbose();
         let first_dict = get_first_sets(&parser_data).unwrap();
-        let follow_dict = get_follow_sets(parser_data.get_element_nt_index("start").unwrap(), &first_dict, &parser_data).unwrap();
+        let follow_dict = get_follow_sets(
+            parser_data.get_element_nt_index("start").unwrap(),
+            &first_dict,
+            &parser_data,
+        )
+        .unwrap();
 
         let rules_with_steuermaps = get_steuermaps(&first_dict, &follow_dict, parser_data).unwrap();
-        Parser { vm, discard, rules_with_steuermaps, elements }
+        Parser {
+            vm,
+            rules_with_steuermaps,
+            elements,
+        }
     }
 
-    pub fn parse(&mut self, to_parse: &'a str, state: &mut T::Tstate) -> Result<Tree<String>, ParserError> {
+    /// Creates a new Parser from pre-parsed ParserData.
+    ///
+    /// This method is useful when you have already parsed the grammar rules
+    /// and want to create a parser with a different VM or starting symbol.
+    ///
+    /// # Arguments
+    ///
+    /// * `parser_data` - The pre-parsed grammar data
+    /// * `start_idx` - The index of the starting non-terminal
+    /// * `vm` - A reference to a virtual machine that implements the VM trait
+    ///
+    /// # Returns
+    ///
+    /// A new Parser instance configured with the provided parser data and VM
+    pub fn new_from_parser_data(
+        parser_data: ParserData<T>,
+        start_idx: ElementIndex,
+        vm: &'a T,
+    ) -> Parser<'a, T> {
+        let first_dict = get_first_sets(&parser_data).unwrap();
+        let follow_dict = get_follow_sets(start_idx, &first_dict, &parser_data).unwrap();
+
+        let elements_verbose = parser_data.get_elements_verbose();
+        let rules_with_steuermaps = get_steuermaps(&first_dict, &follow_dict, parser_data).unwrap();
+
+        let parser = Parser::new(rules_with_steuermaps, elements_verbose, &vm);
+        parser
+    }
+
+    /// Creates a new Parser from pre-computed components.
+    ///
+    /// This is a low-level constructor that takes already computed steuer maps and elements.
+    ///
+    /// # Arguments
+    ///
+    /// * `rules_with_steuermaps` - Mapping from non-terminal indices to their rules and steuer maps
+    /// * `elements` - List of all grammar elements (terminals and non-terminals)
+    /// * `vm` - A reference to a virtual machine that implements the VM trait
+    ///
+    /// # Returns
+    ///
+    /// A new Parser instance with the provided components
+    pub fn new(
+        rules_with_steuermaps: HashMap<ElementIndex, NTRules<T>>,
+        elements: Vec<ElementVerbose>,
+        vm: &'a T,
+    ) -> Parser<'a, T> {
+        Parser {
+            vm,
+            rules_with_steuermaps,
+            elements,
+        }
+    }
+
+    /// Parses a string according to the grammar rules and executes VM instructions.
+    ///
+    /// This method takes a string to parse and a mutable reference to a VM state,
+    /// parses the string according to the grammar rules, and returns a parse tree.
+    ///
+    /// # Arguments
+    ///
+    /// * `to_parse` - The string to parse
+    /// * `state` - A mutable reference to the VM state
+    ///
+    /// # Returns
+    ///
+    /// A Result containing either the parse tree or a ParserError
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use henriks_parsing_project::script_parser::Parser;
+    /// use henriks_parsing_project::vms::NullVm;
+    ///
+    /// let rules = "start -> \"hello\" \"world\";";
+    /// let vm = NullVm::new();
+    /// let mut state = NullVm::create_new_state();
+    /// let mut parser = Parser::new_from_text(rules, &vm);
+    ///
+    /// let result = parser.parse("helloworld", &mut state);
+    /// ```
+    pub fn parse(
+        &mut self,
+        to_parse: &'a str,
+        state: &mut T::Tstate,
+    ) -> Result<Tree<String>, ParserError> {
         let mut peekable = PeekableWrapper::<Chars>::new(to_parse.chars().peekable());
         let mut to_parse = ParseProcess::<PeekableWrapper<Chars>>::new(&mut peekable, None, None);
-        let start_index = self.elements.iter().position(|r| *r == ElementVerbose::new(String::from("start"), ElementType::NonTerminal)).unwrap();
+        let start_index = self
+            .elements
+            .iter()
+            .position(|r| {
+                *r == ElementVerbose::new(String::from("start"), ElementType::NonTerminal)
+            })
+            .unwrap();
         let mut tree = Tree::new();
 
         self.parse_production(&mut to_parse, start_index, state, &mut tree, None)?;
         Ok(tree)
     }
 
-    fn get_fitting_production(&self, to_parse: &mut ParseProcess<PeekableWrapper<Chars<'a>>>, el_index: ElementIndex, cur: &SetMember) -> Result<&Rc<Production>, ParserError> {
-        let nt_rule = self.rules_with_steuermaps.get(&el_index).ok_or(MissingProduction { index: el_index })?;
+    fn get_fitting_production(
+        &self,
+        to_parse: &mut ParseProcess<PeekableWrapper<Chars<'a>>>,
+        el_index: ElementIndex,
+        cur: &SetMember,
+    ) -> Result<&Rc<Production>, ParserError> {
+        let nt_rule = self
+            .rules_with_steuermaps
+            .get(&el_index)
+            .ok_or(MissingProduction { index: el_index })?;
         let fitting_production: Option<&Rc<Production>> = nt_rule.steuermap.get(cur);
         match fitting_production {
-            None => { Err(UnexpectedCharError { chr: *to_parse.peek().unwrap_or(&'#'), pos: to_parse.cur_pos(), expected: nt_rule.steuermap.keys().cloned().map(|x| x.into()).collect::<Vec<String>>().join(";") }) }
-            Some(fp) => { Ok(fp) }
+            None => Err(UnexpectedCharError {
+                chr: *to_parse.peek().unwrap_or(&'#'),
+                pos: to_parse.cur_pos(),
+                expected: nt_rule
+                    .steuermap
+                    .keys()
+                    .cloned()
+                    .map(|x| x.into())
+                    .collect::<Vec<String>>()
+                    .join(";"),
+            }),
+            Some(fp) => Ok(fp),
         }
     }
-    fn parse_production(&self, to_parse: &mut ParseProcess<PeekableWrapper<Chars<'a>>>, el_index: ElementIndex, state: &mut T::Tstate, tree: &mut Tree<String>, current_node: Option<NodeId>)
-                        -> Result<(), ParserError> {
+    fn parse_production(
+        &self,
+        to_parse: &mut ParseProcess<PeekableWrapper<Chars<'a>>>,
+        el_index: ElementIndex,
+        state: &mut T::Tstate,
+        tree: &mut Tree<String>,
+        current_node: Option<NodeId>,
+    ) -> Result<(), ParserError> {
         let cur = SetMember::from(to_parse.peek());
-        let nt_rule = self.rules_with_steuermaps.get(&el_index).ok_or(MissingProduction { index: el_index })?;
-        let fitting_production: &Rc<Production>= self.get_fitting_production(to_parse, el_index, &cur)?;
+        let nt_rule = self
+            .rules_with_steuermaps
+            .get(&el_index)
+            .ok_or(MissingProduction { index: el_index })?;
+        let fitting_production: &Rc<Production> =
+            self.get_fitting_production(to_parse, el_index, &cur)?;
 
-        let id=tree.add_node(String::from(""),current_node)?;
-     
+        let id = tree.add_node(String::from(""), current_node)?;
+
         let prod = &**fitting_production;
         match prod {
             Production::NotEmpty(prod_not_empty) => {
@@ -81,34 +270,58 @@ where
 
                     match elemente_next.et {
                         ElementType::Terminal => {
-                            let _=tree.add_node(self.parse_terminal(to_parse, elemente_next.name.as_str())?,Some(id));
+                            let _ = tree.add_node(
+                                self.parse_terminal(to_parse, elemente_next.name.as_str())?,
+                                Some(id),
+                            );
                         }
                         ElementType::NonTerminal => {
-                            self.parse_production(to_parse, *next_element_index, state, tree,Some(id))?;
+                            self.parse_production(
+                                to_parse,
+                                *next_element_index,
+                                state,
+                                tree,
+                                Some(id),
+                            )?;
                         }
                     }
                 }
             }
             Production::Empty => {}
         };
-     
-        self.run_instructions(tree,id, &nt_rule.instruction, state);
+
+        self.run_instructions(tree, id, &nt_rule.instruction, state);
 
         Ok(())
     }
 
-    fn run_instructions(&self, tree: &mut Tree<String>, cur_node: NodeId, instructions: &Vec<<T as VM>::Tinstrution>, state: &mut T::Tstate) {
+    fn run_instructions(
+        &self,
+        tree: &mut Tree<String>,
+        cur_node: NodeId,
+        instructions: &Vec<<T as VM>::Tinstrution>,
+        state: &mut T::Tstate,
+    ) {
         for instruction in instructions {
-            self.vm.execute_instruction(tree, cur_node, &instruction,state);
+            self.vm
+                .execute_instruction(tree, cur_node, &instruction, state);
         }
     }
 
-    fn parse_terminal(&self, to_parse: &mut ParseProcess<PeekableWrapper<Chars<'a>>>, terminal: &str) -> Result<String, ParserError> {
+    fn parse_terminal(
+        &self,
+        to_parse: &mut ParseProcess<PeekableWrapper<Chars<'a>>>,
+        terminal: &str,
+    ) -> Result<String, ParserError> {
         for chr in terminal.chars() {
-            let pos=to_parse.cur_pos();
-            let char_to_parse: &char = to_parse.peek().ok_or(EndOfCharsError{pos})?;
+            let pos = to_parse.cur_pos();
+            let char_to_parse: &char = to_parse.peek().ok_or(EndOfCharsError { pos })?;
             if *char_to_parse != chr {
-                return Err(UnexpectedCharError { chr: *char_to_parse, pos: to_parse.cur_pos(), expected: String::from(chr) });
+                return Err(UnexpectedCharError {
+                    chr: *char_to_parse,
+                    pos: to_parse.cur_pos(),
+                    expected: String::from(chr),
+                });
             }
             to_parse.next();
         }
@@ -116,26 +329,24 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::script_parser::Parser;
-    use crate::vms::{NullVm, VM};
     use crate::vms::counting_vm::CountingVm;
+    use crate::vms::{NullVm, VM};
 
     use crate::errors::ParserError;
     use crate::tree::NodeId;
 
     #[test]
     fn test_script_parser() {
-        let rules =
-            "start      -> identifier1 identifier2;\
+        let rules = "start      -> identifier1 identifier2;\
             identifier1 -> \"a_terminal\"| #;
             identifier2 -> \"b_terminal\"| #;
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "a_terminalb_terminal";
         parser.parse(text_to_parse, &mut state).unwrap();
@@ -143,18 +354,22 @@ mod tests {
 
     #[test]
     fn test_script_parser2() {
-        let rules =
-            "start      -> identifier1 identifier2;\
+        let rules = "start      -> identifier1 identifier2;\
             identifier1 -> \"abcde\"| #;
             identifier2 -> \"zzzzzz\"| #;
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "abcdeg";
         if let Err(x) = parser.parse(text_to_parse, &mut state) {
-            if let ParserError::UnexpectedCharError { chr, pos, expected: _ } = x {
+            if let ParserError::UnexpectedCharError {
+                chr,
+                pos,
+                expected: _,
+            } = x
+            {
                 assert_eq!(5, pos);
                 assert_eq!('g', chr)
             } else {
@@ -167,14 +382,13 @@ mod tests {
 
     #[test]
     fn test_script_parser3() {
-        let rules =
-            "start      -> identifier1 identifier2;\
+        let rules = "start      -> identifier1 identifier2;\
             identifier1 -> \"a_terminal\"| #;
             identifier2 -> \"b_terminal\"| \"c_terminal\";
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "a_terminalc_terminal";
         parser.parse(text_to_parse, &mut state).unwrap();
@@ -182,69 +396,74 @@ mod tests {
 
     #[test]
     fn test_script_parser_graph() {
-        let rules =
-            "start      -> identifier1 identifier2;\
+        let rules = "start      -> identifier1 identifier2;\
             identifier1 -> \"a_terminal\"| #;
             identifier2 -> \"b_terminal\"| \"c_terminal\";
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "a_terminalc_terminal";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
         println!("hallo");
-        println!("{}",format!("{graph:?}"));
-        
-        let res = graph.get_by_path_or_none(NodeId::new(0,0), vec![0, 0].into_iter()).unwrap().unwrap();
+        println!("{}", format!("{graph:?}"));
+
+        let res = graph
+            .get_by_path_or_none(NodeId::new(0, 0), vec![0, 0].into_iter())
+            .unwrap()
+            .unwrap();
         assert_eq!("a_terminal", res.data)
     }
 
     #[test]
     fn test_script_parser_graph2() {
-        let rules =
-            "start      -> identifier1 identifier2;\
+        let rules = "start      -> identifier1 identifier2;\
             identifier1 -> \"a_terminal\"| #;
             identifier2 -> \"b_terminal\"| \"c_terminal\";
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "c_terminal";
         let tree = parser.parse(text_to_parse, &mut state).unwrap();
-        let res = tree.get_by_path_or_none(NodeId::new(0,0), vec![0, 0].into_iter()).unwrap();
+        let res = tree
+            .get_by_path_or_none(NodeId::new(0, 0), vec![0, 0].into_iter())
+            .unwrap();
         assert!(res.is_none())
     }
 
     #[test]
     fn test_script_parser_graph3() {
-        let rules =
-            "start      -> identifier1;\
+        let rules = "start      -> identifier1;\
             identifier1 -> \"a\" identifier2;
             identifier2 -> \"b\";
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "ab";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
-        let res = &graph.get_by_path_or_none(NodeId::new(0,0), vec![0, 1, 0].into_iter()).unwrap().unwrap().data;
+        let res = &graph
+            .get_by_path_or_none(NodeId::new(0, 0), vec![0, 1, 0].into_iter())
+            .unwrap()
+            .unwrap()
+            .data;
         assert_eq!("b", res)
     }
 
     #[test]
     fn test_parse_list() {
-        let rules =
-            "start      -> list;\
+        let rules = "start      -> list;\
             list -> l_element list_s ;\
             list_s -> l_element list_s| #;\
             l_element -> \"a\";\
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "aaa";
         let _graph = parser.parse(text_to_parse, &mut state).unwrap();
@@ -252,15 +471,14 @@ mod tests {
 
     #[test]
     fn test_parse_list2() {
-        let rules =
-            "start      -> list;\
+        let rules = "start      -> list;\
             list -> l_element list_s ;\
             list_s -> l_element list_s| #;\
             l_element -> \"a\";\
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "a";
         let _graph = parser.parse(text_to_parse, &mut state).unwrap();
@@ -268,14 +486,13 @@ mod tests {
 
     #[test]
     fn test_script_parser_discarder() {
-        let rules =
-            "$IGNORE: whitespace; \
+        let rules = "$IGNORE: whitespace; \
             start      -> \"a\" \"b\";\
             whitespace -> \" \";\
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = " a b ";
         let _graph = parser.parse(text_to_parse, &mut state).unwrap();
@@ -283,14 +500,13 @@ mod tests {
 
     #[test]
     fn test_script_parser_discarder2() {
-        let rules =
-            "$IGNORE: whitespace; \
+        let rules = "$IGNORE: whitespace; \
             start      -> \"a\" \"b\";\
             whitespace -> \" \"| #;\
 ";
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "a b";
         let _graph = parser.parse(text_to_parse, &mut state).unwrap();
@@ -298,8 +514,7 @@ mod tests {
 
     #[test]
     fn test_script_parser_discarder3() {
-        let rules =
-            "$IGNORE: whitespaces; \
+        let rules = "$IGNORE: whitespaces; \
             start      -> \"a\" \"b\" \"c\" ;\
             whitespaces -> whitespace whitespaces_s ;\
             whitespaces_s -> whitespace whitespaces_s| #;\
@@ -308,20 +523,40 @@ mod tests {
 
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = " a  b   c  ";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
 
-        assert_eq!("a", graph.get_by_path_or_none(NodeId::new(0,0), vec![0].into_iter()).unwrap().unwrap().data);
-        assert_eq!("b", graph.get_by_path_or_none(NodeId::new(0,0), vec![1].into_iter()).unwrap().unwrap().data);
-        assert_eq!("c", graph.get_by_path_or_none(NodeId::new(0,0), vec![2].into_iter()).unwrap().unwrap().data);
+        assert_eq!(
+            "a",
+            graph
+                .get_by_path_or_none(NodeId::new(0, 0), vec![0].into_iter())
+                .unwrap()
+                .unwrap()
+                .data
+        );
+        assert_eq!(
+            "b",
+            graph
+                .get_by_path_or_none(NodeId::new(0, 0), vec![1].into_iter())
+                .unwrap()
+                .unwrap()
+                .data
+        );
+        assert_eq!(
+            "c",
+            graph
+                .get_by_path_or_none(NodeId::new(0, 0), vec![2].into_iter())
+                .unwrap()
+                .unwrap()
+                .data
+        );
     }
 
     #[test]
     fn test_script_parser_discarder4() {
-        let rules =
-            "$IGNORE: whitespaces; \
+        let rules = "$IGNORE: whitespaces; \
             start      -> a_or_b \"c\" ;\
             a_or_b -> \"a\"| \"b\";
             whitespaces -> whitespace whitespaces_s ;\
@@ -331,39 +566,41 @@ mod tests {
 
         let vm = NullVm::new();
         let mut state = NullVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "a    c";
         let graph = parser.parse(text_to_parse, &mut state).unwrap();
 
-        assert_eq!("a", graph.get_by_path_or_none(NodeId::new(0,0), vec![0, 0].into_iter()).unwrap().unwrap().data);
-        assert_eq!("c", graph.get_by_path_or_none(NodeId::new(0,0), vec![1].into_iter()).unwrap().unwrap().data);
+        assert_eq!(
+            "a",
+            graph
+                .get_by_path_or_none(NodeId::new(0, 0), vec![0, 0].into_iter())
+                .unwrap()
+                .unwrap()
+                .data
+        );
+        assert_eq!(
+            "c",
+            graph
+                .get_by_path_or_none(NodeId::new(0, 0), vec![1].into_iter())
+                .unwrap()
+                .unwrap()
+                .data
+        );
     }
 
     #[test]
     fn test_counting_vm() {
-        let rules =
-            "start      -> count count count ;\
+        let rules = "start      -> count count count ;\
             count -> \"a\" {} ;\
 ";
 
         let vm = CountingVm {};
         let mut state = CountingVm::create_new_state();
-        let mut parser = Parser::new(rules, &vm);
+        let mut parser = Parser::new_from_text(rules, &vm);
 
         let text_to_parse = "aaa";
         let _graph = parser.parse(text_to_parse, &mut state).unwrap();
         assert_eq!(3, state);
     }
 }
-
-
-
-
-
-
-
-
-
-
-

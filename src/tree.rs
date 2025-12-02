@@ -1,19 +1,18 @@
-use crate::simple_graph::NodeIndex;
+use crate::tree::TreeError::{ChildDoesNotExists, NodeDoesNotExist, NodeWasRemoved};
 use std::fmt;
 use std::sync::atomic::AtomicUsize;
-use crate::tree::TreeError::{ChildDoesNotExists, NodeDoesNotExist, NodeWasRemoved};
 
 type NodePtr = usize;
 type NodePk = usize;
 
-#[derive(Debug,Copy,Clone,PartialEq,Eq,Hash)]
-pub struct NodeId{
-    pub node_ptr:NodePtr,
-    pub node_pk:NodePk,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct NodeId {
+    pub node_ptr: NodePtr,
+    pub node_pk: NodePk,
 }
-impl NodeId{
-    pub(crate) fn new(node_ptr: NodePtr, node_pk: NodePk) -> NodeId{
-        NodeId{node_ptr,node_pk}
+impl NodeId {
+    pub(crate) fn new(node_ptr: NodePtr, node_pk: NodePk) -> NodeId {
+        NodeId { node_ptr, node_pk }
     }
 }
 impl fmt::Display for NodeId {
@@ -23,14 +22,14 @@ impl fmt::Display for NodeId {
         // stream: `f`. Returns `fmt::Result` which indicates whether the
         // operation succeeded or failed. Note that `write!` uses syntax which
         // is very similar to `println!`.
-        write!(f, "ptr_in_arr:{}, pk:{}", self.node_ptr,self.node_pk)
+        write!(f, "ptr_in_arr:{}, pk:{}", self.node_ptr, self.node_pk)
     }
 }
 #[derive(Debug)]
 pub struct Tree<T> {
     nodes: Vec<Node<T>>,
     free_node_indexes: Vec<NodePtr>,
-    counter:AtomicUsize,
+    counter: AtomicUsize,
 }
 
 #[derive(Debug)]
@@ -40,11 +39,16 @@ pub struct Node<T> {
     next_sibling: Option<NodePtr>,
     first_child: Option<NodePtr>,
     last_child: Option<NodePtr>,
-    pk:NodePk,
+    pk: NodePk,
     pub data: T,
 }
 impl<T> Node<T> {
-    fn new(parent: Option<NodePtr>, data: T, pk: NodePk,previous_sibling:Option<NodePtr>) -> Node<T> {
+    fn new(
+        parent: Option<NodePtr>,
+        data: T,
+        pk: NodePk,
+        previous_sibling: Option<NodePtr>,
+    ) -> Node<T> {
         Node {
             parent,
             first_child: None,
@@ -55,29 +59,33 @@ impl<T> Node<T> {
             data,
         }
     }
-    
 }
-
 
 impl<T> Tree<T> {
     pub fn new() -> Tree<T> {
-        Tree { nodes: vec![], free_node_indexes: vec![], counter:AtomicUsize::new(0) }
+        Tree {
+            nodes: vec![],
+            free_node_indexes: vec![],
+            counter: AtomicUsize::new(0),
+        }
     }
     pub fn add_node(&mut self, data: T, parent: Option<NodeId>) -> Result<NodeId, TreeError> {
         // Get the next free index
         let mut reused_index = false;
         let next_index = match self.free_node_indexes.pop() {
-            None => { self.nodes.len() }
+            None => self.nodes.len(),
             Some(i) => {
                 reused_index = true;
                 i
             }
         };
-        
-        let new_pk=match parent {
+
+        let new_pk = match parent {
             None => {
-                let pk=self.counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                let new_node = Node::new(None,data,pk,None);
+                let pk = self
+                    .counter
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                let new_node = Node::new(None, data, pk, None);
                 if reused_index {
                     self.nodes[next_index] = new_node;
                 } else {
@@ -87,11 +95,14 @@ impl<T> Tree<T> {
             }
             Some(parent_id) => {
                 if !self.node_exists(parent_id) {
-                    return Err(NodeDoesNotExist { node_id: parent_id });  
+                    return Err(NodeDoesNotExist { node_id: parent_id });
                 }
-                let pk=self.counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                let pk = self
+                    .counter
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 let parent_node = self.get_node_mut(parent_id)?;
-                let new_node = Node::new(Some(parent_id.node_ptr), data, pk,parent_node.last_child);
+                let new_node =
+                    Node::new(Some(parent_id.node_ptr), data, pk, parent_node.last_child);
 
                 let last_child_index = parent_node.last_child;
                 if let None = parent_node.first_child {
@@ -109,15 +120,11 @@ impl<T> Tree<T> {
                     self.nodes.push(new_node);
                 }
                 pk
-                
             }
         };
 
-        Ok(NodeId::new(next_index,new_pk))
+        Ok(NodeId::new(next_index, new_pk))
     }
-    
-
-
 
     pub fn get_descendants(&self, node_id: NodeId) -> Vec<NodeId> {
         let mut descendants = vec![];
@@ -126,7 +133,7 @@ impl<T> Tree<T> {
         for child in children {
             let child_descendants = self.get_descendants(child);
             descendants.extend(child_descendants);
-        };
+        }
         descendants
     }
 
@@ -136,41 +143,52 @@ impl<T> Tree<T> {
         let mut cur_children_ix = node.first_child;
         while let Some(child_index) = cur_children_ix {
             let cur_children = &self.nodes[child_index];
-            children.push(NodeId::new(child_index,cur_children.pk));
+            children.push(NodeId::new(child_index, cur_children.pk));
             cur_children_ix = cur_children.next_sibling;
         }
 
         children
     }
-    
-    pub fn get_nth_child(&self, node: &Node<T>, nth:usize ) -> Result<&Node<T>,TreeError> {
-        let children=Children{tree:self,current_child:node.first_child};
-        for (i,child) in children.enumerate() {
-            if i==nth{
-                return Ok(child)
+
+    pub fn get_nth_child(&self, node: &Node<T>, nth: usize) -> Result<&Node<T>, TreeError> {
+        let children = Children {
+            tree: self,
+            current_child: node.first_child,
+        };
+        for (i, child) in children.enumerate() {
+            if i == nth {
+                return Ok(child);
             }
         }
-        Err(ChildDoesNotExists {child_nth:nth})
-    }pub fn get_nth_child_or_none(&self, node: &Node<T>, nth:usize ) -> Option<&Node<T>> {
-        let children=Children{tree:self,current_child:node.first_child};
-        for (i,child) in children.enumerate() {
-            if i==nth{
-                return Some(child)
+        Err(ChildDoesNotExists { child_nth: nth })
+    }
+    pub fn get_nth_child_or_none(&self, node: &Node<T>, nth: usize) -> Option<&Node<T>> {
+        let children = Children {
+            tree: self,
+            current_child: node.first_child,
+        };
+        for (i, child) in children.enumerate() {
+            if i == nth {
+                return Some(child);
             }
         }
         None
     }
-    pub fn get_by_path_or_none(&self, source: NodeId, ids: impl Iterator<Item = usize>) ->Result<Option<&Node<T>>,TreeError>{
-        let mut node=self.get_node(source)?;
-        
+    pub fn get_by_path_or_none(
+        &self,
+        source: NodeId,
+        ids: impl Iterator<Item = usize>,
+    ) -> Result<Option<&Node<T>>, TreeError> {
+        let mut node = self.get_node(source)?;
+
         for id in ids {
-            if let Some(nodee)=self.get_nth_child_or_none(node,id){
-                node=nodee;
-            }else{
+            if let Some(nodee) = self.get_nth_child_or_none(node, id) {
+                node = nodee;
+            } else {
                 return Ok(None);
             }
         }
-        
+
         Ok(Some(node))
     }
 
@@ -183,7 +201,7 @@ impl<T> Tree<T> {
         }
         let current_node = &self.nodes[node_id.node_ptr];
         if current_node.pk != node_id.node_pk {
-            return Err(NodeDoesNotExist { node_id });       
+            return Err(NodeDoesNotExist { node_id });
         }
         Ok(&current_node)
     }
@@ -214,16 +232,19 @@ impl<T> Tree<T> {
         true
     }
 
-    pub fn remove_branch(&mut self, node_id: NodeId)->Result<(),TreeError> {
+    pub fn remove_branch(&mut self, node_id: NodeId) -> Result<(), TreeError> {
         let node = &self.get_node(node_id)?;
         let parent_id_maybe = node.parent;
-        let mut nodes_to_free = self.get_descendants(node_id).iter().map(|x| x.node_ptr).collect::<Vec<usize>>();
+        let mut nodes_to_free = self
+            .get_descendants(node_id)
+            .iter()
+            .map(|x| x.node_ptr)
+            .collect::<Vec<usize>>();
         nodes_to_free.push(node_id.node_ptr);
         nodes_to_free.push(node_id.node_ptr);
 
         let next_sibling_id = node.next_sibling;
         let previous_sibling_id = node.previous_sibling;
-
 
         if let Some(parent_id) = parent_id_maybe {
             let parent = &mut self.nodes[parent_id];
@@ -243,11 +264,10 @@ impl<T> Tree<T> {
             next.previous_sibling = previous_sibling_id;
         }
         self.free_node_indexes.extend(nodes_to_free);
-        
+
         Ok(())
     }
 }
-
 
 pub struct Children<'tree, T> {
     tree: &'tree Tree<T>,
@@ -257,11 +277,11 @@ pub struct Children<'tree, T> {
 impl<'tree, T> Iterator for Children<'tree, T> {
     type Item = &'tree Node<T>;
 
-    fn next(&mut self) ->Option<&'tree Node<T>> {
+    fn next(&mut self) -> Option<&'tree Node<T>> {
         match self.current_child {
             None => None,
             Some(node_id) => {
-                let child= &self.tree.nodes[node_id];
+                let child = &self.tree.nodes[node_id];
                 let next_id = child.next_sibling;
                 self.current_child = next_id;
                 Some(child)
@@ -284,46 +304,44 @@ impl fmt::Display for TreeError {
         match self {
             NodeDoesNotExist { node_id } => write!(f, "{} does not exists", node_id),
             NodeWasRemoved { node_id } => write!(f, "{} was removed", node_id),
-            ChildDoesNotExists {child_nth}=> write!(f, "{} does not exist", child_nth),
+            ChildDoesNotExists { child_nth } => write!(f, "{} does not exist", child_nth),
         }
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::tree::{NodeId, Tree};
-    
+
     #[test]
     fn get_node_does_not_exists() {
-        let tree= Tree::<usize>::new();
-        let res = tree.get_node(NodeId::new(0,0));
-        assert!( res.is_err());
+        let tree = Tree::<usize>::new();
+        let res = tree.get_node(NodeId::new(0, 0));
+        assert!(res.is_err());
     }
 
     #[test]
     fn test_tree_add_node() {
-        let mut tree= Tree::new();
-        let node=tree.add_node("test",None).unwrap();
+        let mut tree = Tree::new();
+        let node = tree.add_node("test", None).unwrap();
         let res = tree.get_node(node).unwrap().data;
         assert_eq!("test", res);
     }
     #[test]
     fn test_tree_add_delete_node() {
-        let mut tree= Tree::new();
-        let node=tree.add_node("test",None).unwrap();
+        let mut tree = Tree::new();
+        let node = tree.add_node("test", None).unwrap();
         tree.remove_branch(node);
-        
-        let res = tree.get_node(node);
-        assert!( res.is_err());
 
+        let res = tree.get_node(node);
+        assert!(res.is_err());
     }
     #[test]
     fn test_tree_add_delete_add_node() {
-        let mut tree= Tree::new();
-        let node=tree.add_node("remove",None).unwrap();
+        let mut tree = Tree::new();
+        let node = tree.add_node("remove", None).unwrap();
         tree.remove_branch(node);
-        let node2=tree.add_node("test",None).unwrap();
+        let node2 = tree.add_node("test", None).unwrap();
 
         let res = tree.get_node(node2).unwrap().data;
         assert_eq!("test", res);
@@ -331,35 +349,36 @@ mod tests {
     #[test]
     fn test_tree_add_delete_add_node2() {
         //TODO Missing feature
-        let mut tree= Tree::new();
-        let node_deleted=tree.add_node("remove",None).unwrap();
+        let mut tree = Tree::new();
+        let node_deleted = tree.add_node("remove", None).unwrap();
         tree.remove_branch(node_deleted);
-        let node =tree.add_node("test", None).unwrap();
+        let node = tree.add_node("test", None).unwrap();
 
         let res = tree.get_node(node_deleted);
-        assert!( res.is_err());
+        assert!(res.is_err());
     }
 
     #[test]
     fn test_tree_add_node_child() {
-        let mut tree= Tree::new();
-        let node=tree.add_node("test",None).unwrap();
-        let _= tree.add_node("child",Some(node)).unwrap();
-        let childs=tree.get_children(node);
-        let child_data= tree.get_node(childs[0]).unwrap().data;
+        let mut tree = Tree::new();
+        let node = tree.add_node("test", None).unwrap();
+        let _ = tree.add_node("child", Some(node)).unwrap();
+        let childs = tree.get_children(node);
+        let child_data = tree.get_node(childs[0]).unwrap().data;
         assert_eq!("child", child_data);
-
     }
 
     #[test]
     fn test_tree_get_by_path() {
-        let mut tree= Tree::new();
-        let node=tree.add_node("test",None).unwrap();
-        let _= tree.add_node("child",Some(node)).unwrap();
-        let child= tree.get_by_path_or_none(node,vec![0].into_iter()).unwrap().unwrap();
+        let mut tree = Tree::new();
+        let node = tree.add_node("test", None).unwrap();
+        let _ = tree.add_node("child", Some(node)).unwrap();
+        let child = tree
+            .get_by_path_or_none(node, vec![0].into_iter())
+            .unwrap()
+            .unwrap();
 
-        let child_data= child.data;
+        let child_data = child.data;
         assert_eq!("child", child_data);
-
     }
 }

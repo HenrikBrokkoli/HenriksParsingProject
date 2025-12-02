@@ -1,3 +1,7 @@
+//! A very simple adjacency structure using index-based nodes and edges.
+//!
+//! This minimal graph is used internally (e.g., during FOLLOW set computations)
+//! to avoid dependencies while keeping operations fast and predictable.
 //initial idea stolen from here:
 //http://smallcultfollowing.com/babysteps/blog/2015/04/06/modeling-graphs-in-rust-using-vector-indices/
 enum ThingWithNextEdge {
@@ -17,7 +21,6 @@ pub struct NodeData<T> {
     pub data: T,
 }
 
-
 pub type EdgeIndex = usize;
 pub type EdgeId = usize;
 
@@ -29,23 +32,28 @@ pub struct EdgeData {
 
 impl<T> Graph<T> {
     pub fn new() -> Graph<T> {
-        Graph { nodes: vec![], edges: vec![] }
+        Graph {
+            nodes: vec![],
+            edges: vec![],
+        }
     }
 
     pub fn add_node(&mut self, data: T) -> NodeIndex {
         let index = self.nodes.len();
-        self.nodes.push(NodeData { first_outgoing_edge: None, data });
+        self.nodes.push(NodeData {
+            first_outgoing_edge: None,
+            data,
+        });
         index
     }
-
 
     pub fn add_edge(&mut self, source: NodeIndex, target: NodeIndex) {
         let edge_index: EdgeIndex = self.edges.len();
         let node_data = &mut self.nodes[source];
         let last_edge_index = node_data.first_outgoing_edge;
         let new_edge_id = match last_edge_index {
-            None => { 0 }
-            Some(index) => { self.edges.get(index).unwrap().id + 1 }
+            None => 0,
+            Some(index) => self.edges.get(index).unwrap().id + 1,
         };
         self.edges.push(EdgeData {
             target,
@@ -55,8 +63,12 @@ impl<T> Graph<T> {
         node_data.first_outgoing_edge = Some(edge_index);
     }
 
-    pub fn try_add_edge_with_id(&mut self, source: NodeIndex, target: NodeIndex, id: usize) -> bool {
-        
+    pub fn try_add_edge_with_id(
+        &mut self,
+        source: NodeIndex,
+        target: NodeIndex,
+        id: usize,
+    ) -> bool {
         let connected_edges = self.connected_edges(source);
         let mut previous: ThingWithNextEdge = ThingWithNextEdge::Node(source);
         let mut next_edge_index = self.nodes[source].first_outgoing_edge;
@@ -73,8 +85,10 @@ impl<T> Graph<T> {
         }
         let edge_index: EdgeIndex = self.edges.len();
         match previous {
-            ThingWithNextEdge::Node(node) => { self.nodes[node].first_outgoing_edge = Some(edge_index) }
-            ThingWithNextEdge::Edge(edge) => { self.edges[edge].next_outgoing_edge = Some(edge_index) }
+            ThingWithNextEdge::Node(node) => {
+                self.nodes[node].first_outgoing_edge = Some(edge_index)
+            }
+            ThingWithNextEdge::Edge(edge) => self.edges[edge].next_outgoing_edge = Some(edge_index),
         }
 
         self.edges.push(EdgeData {
@@ -94,50 +108,75 @@ impl<T> Graph<T> {
             } else if edge.id < id {
                 return None;
             }
-        };
+        }
         None
     }
-    pub fn find_node_index_by_path(&self, source: NodeIndex, ids: impl Iterator<Item = EdgeIndex>) -> Option<NodeIndex> {
-        let mut cur_node_index= Some(source);
+    pub fn find_node_index_by_path(
+        &self,
+        source: NodeIndex,
+        ids: impl Iterator<Item = EdgeIndex>,
+    ) -> Option<NodeIndex> {
+        let mut cur_node_index = Some(source);
         for id in ids {
             match cur_node_index {
-                None => {return None}
-                Some(cni) => {cur_node_index=self.find_node_index(cni,id);}
+                None => return None,
+                Some(cni) => {
+                    cur_node_index = self.find_node_index(cni, id);
+                }
             }
         }
         cur_node_index
     }
 
     pub fn find_node(&self, source: NodeIndex, id: EdgeId) -> Option<&NodeData<T>> {
-        self.find_node_index(source, id).map(|index| &self.nodes[index])
-    }
-    
-    pub fn find_node_by_path(&self, source: NodeIndex, ids: impl Iterator<Item = EdgeIndex>) -> Option<&NodeData<T>> {
-        self.find_node_index_by_path(source, ids).map(|index| &self.nodes[index])
+        self.find_node_index(source, id)
+            .map(|index| &self.nodes[index])
     }
 
+    pub fn find_node_by_path(
+        &self,
+        source: NodeIndex,
+        ids: impl Iterator<Item = EdgeIndex>,
+    ) -> Option<&NodeData<T>> {
+        self.find_node_index_by_path(source, ids)
+            .map(|index| &self.nodes[index])
+    }
 
-    pub fn successors(&self, source: NodeIndex) -> Successors<T> {
+    pub fn successors(&self, source: NodeIndex) -> Successors<'_, T> {
         let first_outgoing_edge = self.nodes[source].first_outgoing_edge;
-        Successors { graph: self, current_edge_index: first_outgoing_edge }
+        Successors {
+            graph: self,
+            current_edge_index: first_outgoing_edge,
+        }
     }
 
-    pub fn connected_edges(&self, source: NodeIndex) -> ConnectedEdges<T> {
-        ConnectedEdges { graph: self, current_edge_index: self.nodes[source].first_outgoing_edge }
+    pub fn connected_edges(&self, source: NodeIndex) -> ConnectedEdges<'_, T> {
+        ConnectedEdges {
+            graph: self,
+            current_edge_index: self.nodes[source].first_outgoing_edge,
+        }
     }
-
 
     pub fn add_graph_at_node(&mut self, graph: Graph<T>, this: NodeIndex, other: NodeIndex) {
         let node_offset = self.nodes.len();
         let edge_offset = self.edges.len();
         for node in graph.nodes.into_iter() {
-            let first_outgoing_edge: Option<EdgeIndex> = node.first_outgoing_edge.map(|ei| edge_offset + ei);
-            self.nodes.push(NodeData { data: node.data, first_outgoing_edge });
+            let first_outgoing_edge: Option<EdgeIndex> =
+                node.first_outgoing_edge.map(|ei| edge_offset + ei);
+            self.nodes.push(NodeData {
+                data: node.data,
+                first_outgoing_edge,
+            });
         }
 
         for edge in graph.edges.into_iter() {
-            let next_outgoing_edge: Option<EdgeIndex> = edge.next_outgoing_edge.map(|ei| edge_offset + ei);
-            self.edges.push(EdgeData { target: node_offset + edge.target, next_outgoing_edge, id: edge.id })
+            let next_outgoing_edge: Option<EdgeIndex> =
+                edge.next_outgoing_edge.map(|ei| edge_offset + ei);
+            self.edges.push(EdgeData {
+                target: node_offset + edge.target,
+                next_outgoing_edge,
+                id: edge.id,
+            })
         }
         self.add_edge(this, other + node_offset)
     }
@@ -182,7 +221,6 @@ impl<'graph, T> Iterator for ConnectedEdges<'graph, T> {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -246,7 +284,7 @@ mod tests {
         graph.add_node("World".to_string());
         assert!(graph.try_add_edge_with_id(0, 1, 0));
         let res = &graph.find_node(0, 0).unwrap().data;
-        assert_eq!("World",res);
+        assert_eq!("World", res);
     }
     #[test]
     fn edge_id_find2() {
@@ -273,15 +311,10 @@ mod tests {
         graph.add_node("Mrs. Mouse".to_string());
         assert!(graph.try_add_edge_with_id(0, 1, 0));
         assert!(graph.try_add_edge_with_id(0, 2, 10));
-        assert_eq!("World",graph.find_node(0, 0).unwrap().data);
+        assert_eq!("World", graph.find_node(0, 0).unwrap().data);
         assert!(graph.find_node(0, 1).is_none());
-        assert_eq!("Mr. Mouse",graph.find_node(0, 10).unwrap().data);
+        assert_eq!("Mr. Mouse", graph.find_node(0, 10).unwrap().data);
         assert!(graph.try_add_edge_with_id(0, 3, 1));
-        assert_eq!("Mrs. Mouse",graph.find_node(0, 1).unwrap().data);
+        assert_eq!("Mrs. Mouse", graph.find_node(0, 1).unwrap().data);
     }
 }
-
-
-
-
-

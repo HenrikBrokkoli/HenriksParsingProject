@@ -1,11 +1,23 @@
+//! Data structures that represent grammar elements, productions and rules.
+//!
+//! This module provides ParserData and related types used to construct parsers
+//! programmatically or as the result of parsing a grammar description. It is the
+//! core in-memory representation used by the Parser.
+
 use crate::peekables::{ParseProcess, PeekableWrapper};
+use crate::vms::VM;
 use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 use std::str::Chars;
-use crate::vms::VM;
 
-///Contains the ParseRules, the vector of elements and a Hashmap of ElementData
+/// Container for grammar rules and elements used by the parser.
+///
+/// ParserData stores the set of non-terminals and terminals, their metadata
+/// and the productions associated with each non-terminal. You can either build
+/// it manually (see examples in examples/rust_defined_rules.rs) or obtain it
+/// from the rule parser. It is generic over a VM because productions may carry
+/// VM-specific instruction payloads.
 pub struct ParserData<T>
 where
     T: VM,
@@ -91,6 +103,49 @@ where
             Some(ix) => *ix,
         }
     }
+
+    pub fn add_production(&mut self, idx: ElementIndex, terms: Vec<ElementIndex>) {
+        let mut start_prod = Rc::new(Production::Empty);
+        if terms.len() > 0 {
+            start_prod = Rc::new(Production::NotEmpty(terms));
+        }
+        let existing = self.parse_rules.rules.get_mut(&idx);
+        if let Some(rule) = existing {
+            rule.possible_productions.push(start_prod);
+        } else {
+            let start_rules = NonTerminalRules::new(vec![start_prod], None, vec![]);
+            self.parse_rules.rules.insert(idx, start_rules);
+        }
+    }
+
+    pub fn set_productions(&mut self, idx: ElementIndex, terms: Vec<Vec<ElementIndex>>) {
+        let existing = self.parse_rules.rules.get_mut(&idx);
+        if let Some(rule) = existing {
+            rule.possible_productions = vec![];
+        }
+        for term in terms {
+            self.add_production(idx, term)
+        }
+    }
+
+    pub fn add_instructions(&mut self, idx: ElementIndex, inst: Vec<T::Tinstrution>) {
+        let existing = self.parse_rules.rules.get_mut(&idx);
+        if let Some(rule) = existing {
+            rule.instruction = inst;
+        } else {
+            let start_rules = NonTerminalRules::new(vec![], None, inst);
+            self.parse_rules.rules.insert(idx, start_rules);
+        }
+    }
+
+    pub fn get_or_add_non_terminal(&mut self, name: &str) -> ElementIndex {
+        let identifier = ElementVerbose::new_nt(String::from(name));
+        self.get_or_add_element_key(&identifier)
+    }
+    pub fn get_or_add_terminal(&mut self, name: &str) -> ElementIndex {
+        let identifier = ElementVerbose::new_t(String::from(name));
+        self.get_or_add_element_key(&identifier)
+    }
     pub fn get_element_index(&self, key: &ElementVerbose) -> Option<ElementIndex> {
         match self.element_verbose_map.get(key) {
             None => None,
@@ -144,6 +199,23 @@ where
     pub possible_productions: PossibleProductions,
     pub ignore: Option<ElementIndex>,
     pub instruction: Vec<<T as VM>::Tinstrution>,
+}
+
+impl<T> NonTerminalRules<T>
+where
+    T: VM,
+{
+    pub fn new(
+        possible_productions: PossibleProductions,
+        ignore: Option<ElementIndex>,
+        instruction: Vec<<T as VM>::Tinstrution>,
+    ) -> NonTerminalRules<T> {
+        NonTerminalRules {
+            possible_productions,
+            ignore,
+            instruction,
+        }
+    }
 }
 impl<T> fmt::Debug for NonTerminalRules<T>
 where

@@ -1,24 +1,34 @@
+//! Peekable adapters used by the rule and script parsers.
+//!
+//! Provides a generic TPeekable trait and wrappers that allow peeking and
+//! conditional consumption while tracking positions, which is helpful for
+//! error reporting during parsing.
+
 use std::iter::Peekable;
 
 pub trait TPeekable: Iterator {
-
     fn peek(&mut self) -> Option<&Self::Item>;
 
     fn peek_mut(&mut self) -> Option<&mut Self::Item>;
 
-    fn next_if(
-        &mut self,
-        func: impl FnOnce(&Self::Item) -> bool) -> Option<Self::Item>;
-
+    fn next_if(&mut self, func: impl FnOnce(&Self::Item) -> bool) -> Option<Self::Item>;
 
     fn next_if_eq(&mut self, expected: &Self::Item) -> Option<Self::Item>;
 }
 
-pub struct PeekableWrapper<T> where T: Iterator, <T as Iterator>::Item: PartialEq {
+pub struct PeekableWrapper<T>
+where
+    T: Iterator,
+    <T as Iterator>::Item: PartialEq,
+{
     peekable: Peekable<T>,
 }
 
-impl<T> Iterator for PeekableWrapper<T>  where T: Iterator, <T as Iterator>::Item: PartialEq  {
+impl<T> Iterator for PeekableWrapper<T>
+where
+    T: Iterator,
+    <T as Iterator>::Item: PartialEq,
+{
     type Item = T::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -26,7 +36,11 @@ impl<T> Iterator for PeekableWrapper<T>  where T: Iterator, <T as Iterator>::Ite
     }
 }
 
-impl<T> TPeekable for PeekableWrapper<T>  where T: Iterator, <T as Iterator>::Item: PartialEq  {
+impl<T> TPeekable for PeekableWrapper<T>
+where
+    T: Iterator,
+    <T as Iterator>::Item: PartialEq,
+{
     fn peek(&mut self) -> Option<&Self::Item> {
         self.peekable.peek()
     }
@@ -44,14 +58,24 @@ impl<T> TPeekable for PeekableWrapper<T>  where T: Iterator, <T as Iterator>::It
     }
 }
 
-impl<T> PeekableWrapper<T> where T: Iterator, <T as Iterator>::Item: PartialEq{
-    pub fn new<P>(peekable:Peekable<P>)->PeekableWrapper<P> where P: Iterator, <P as Iterator>::Item: PartialEq{
-        PeekableWrapper{peekable}
+impl<T> PeekableWrapper<T>
+where
+    T: Iterator,
+    <T as Iterator>::Item: PartialEq,
+{
+    pub fn new<P>(peekable: Peekable<P>) -> PeekableWrapper<P>
+    where
+        P: Iterator,
+        <P as Iterator>::Item: PartialEq,
+    {
+        PeekableWrapper { peekable }
     }
 }
 
-
-pub struct ParseProcess<'a, T> where T: TPeekable<Item=char> {
+pub struct ParseProcess<'a, T>
+where
+    T: TPeekable<Item = char>,
+{
     to_parse: &'a mut T,
     current_position: usize,
     stop_on: Option<char>,
@@ -59,23 +83,47 @@ pub struct ParseProcess<'a, T> where T: TPeekable<Item=char> {
     escape: bool,
 }
 
-impl<'a, T> ParseProcess<'a,  T> where T: TPeekable<Item=char>  {
-
-
-    pub fn new(peekable: &mut T, stop_on:Option<char>,escape_char:Option<char>) -> ParseProcess< T> {
-        ParseProcess { to_parse: peekable, current_position: 0, stop_on,escape_char, escape: false }
+impl<'a, T> ParseProcess<'a, T>
+where
+    T: TPeekable<Item = char>,
+{
+    pub fn new(
+        peekable: &mut T,
+        stop_on: Option<char>,
+        escape_char: Option<char>,
+    ) -> ParseProcess<'_, T> {
+        ParseProcess {
+            to_parse: peekable,
+            current_position: 0,
+            stop_on,
+            escape_char,
+            escape: false,
+        }
     }
-    
-    pub fn new_nested(peekable: &mut T, stop_on:Option<char>,escape_char:Option<char>, global_position:usize) -> ParseProcess< T> {
-        
-        ParseProcess { to_parse: peekable, current_position: global_position, stop_on,escape_char, escape: false }
+
+    pub fn new_nested(
+        peekable: &mut T,
+        stop_on: Option<char>,
+        escape_char: Option<char>,
+        global_position: usize,
+    ) -> ParseProcess<'_, T> {
+        ParseProcess {
+            to_parse: peekable,
+            current_position: global_position,
+            stop_on,
+            escape_char,
+            escape: false,
+        }
     }
     pub fn cur_pos(&self) -> usize {
         self.current_position
     }
 }
 
-impl<'a,  T> Iterator for ParseProcess<'a,  T> where T: TPeekable<Item=char> {
+impl<'a, T> Iterator for ParseProcess<'a, T>
+where
+    T: TPeekable<Item = char>,
+{
     type Item = char;
     fn next(&mut self) -> Option<char> {
         if !self.check_allowed() {
@@ -89,7 +137,10 @@ impl<'a,  T> Iterator for ParseProcess<'a,  T> where T: TPeekable<Item=char> {
     }
 }
 
-impl<'a,  T> TPeekable for ParseProcess< 'a, T> where T: TPeekable<Item=char> {
+impl<'a, T> TPeekable for ParseProcess<'a, T>
+where
+    T: TPeekable<Item = char>,
+{
     fn peek(&mut self) -> Option<&char> {
         if !self.check_allowed() {
             return None;
@@ -123,10 +174,15 @@ impl<'a,  T> TPeekable for ParseProcess< 'a, T> where T: TPeekable<Item=char> {
     }
 }
 
-impl< 'a, T> ParseProcess<'a, T> where T: TPeekable<Item=char> {
+impl<'a, T> ParseProcess<'a, T>
+where
+    T: TPeekable<Item = char>,
+{
     fn check_allowed(&mut self) -> bool {
         let next = self.to_parse.peek();
-        if let (Some(&c),Some(escape_char),Some(stop_char)) = (next, self.escape_char, self.stop_on) {
+        if let (Some(&c), Some(escape_char), Some(stop_char)) =
+            (next, self.escape_char, self.stop_on)
+        {
             if c == escape_char {
                 self.escape = true;
             } else if c == stop_char && !self.escape {
@@ -138,4 +194,3 @@ impl< 'a, T> ParseProcess<'a, T> where T: TPeekable<Item=char> {
         true
     }
 }
-
