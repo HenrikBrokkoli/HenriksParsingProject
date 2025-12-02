@@ -10,7 +10,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 use std::str::Chars;
-use crate::vms::stack_vm::Instruction;
 
 /// Container for grammar rules and elements used by the parser.
 ///
@@ -104,36 +103,36 @@ where
             Some(ix) => *ix,
         }
     }
-    
-    pub fn add_production(&mut self, idx: ElementIndex, terms:Vec<ElementIndex>){
+
+    pub fn add_production(&mut self, idx: ElementIndex, terms: Vec<ElementIndex>) {
         let mut start_prod = Rc::new(Production::Empty);
-        if terms.len() >0 {
-            start_prod = Rc::new(Production::NotEmpty(terms));    
+        if terms.len() > 0 {
+            start_prod = Rc::new(Production::NotEmpty(terms));
         }
-        let existing=self.parse_rules.rules.get_mut(&idx);
+        let existing = self.parse_rules.rules.get_mut(&idx);
         if let Some(rule) = existing {
             rule.possible_productions.push(start_prod);
-        }else{
+        } else {
             let start_rules = NonTerminalRules::new(vec![start_prod], None, vec![]);
             self.parse_rules.rules.insert(idx, start_rules);
         }
     }
 
-    pub fn set_productions(&mut self, idx:ElementIndex, terms:Vec<Vec<ElementIndex>>){
-        let existing=self.parse_rules.rules.get_mut(&idx);
+    pub fn set_productions(&mut self, idx: ElementIndex, terms: Vec<Vec<ElementIndex>>) {
+        let existing = self.parse_rules.rules.get_mut(&idx);
         if let Some(rule) = existing {
-            rule.possible_productions=vec![];
+            rule.possible_productions = vec![];
         }
-        for term in terms{
-            self.add_production(idx,term)
+        for term in terms {
+            self.add_production(idx, term)
         }
     }
 
-    pub fn add_instructions(&mut self, idx: ElementIndex, inst: Vec<T::Tinstrution>){
-        let existing=self.parse_rules.rules.get_mut(&idx);
+    pub fn add_instructions(&mut self, idx: ElementIndex, inst: Vec<T::Tinstrution>) {
+        let existing = self.parse_rules.rules.get_mut(&idx);
         if let Some(rule) = existing {
-            rule.instruction=inst;
-        }else {
+            rule.instruction = inst;
+        } else {
             let start_rules = NonTerminalRules::new(vec![], None, inst);
             self.parse_rules.rules.insert(idx, start_rules);
         }
