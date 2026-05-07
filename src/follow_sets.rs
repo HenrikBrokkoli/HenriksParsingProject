@@ -174,7 +174,7 @@ identifier2 -> \"b_terminal\"\
 identifier3 -> \"c_terminal\"| #;
 ";
         let mut peekable =
-            PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
+            PeekableWrapper::from_str(to_parse);
         let mut vm = NullVm::new();
         let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
         rule_parser.parse_rules().expect("TODO: panic message");
@@ -216,7 +216,7 @@ identifier3 -> \"c_terminal\"| #;
             identifier3 -> \"c_terminal\"| #;
 ";
         let mut peekable =
-            PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
+            PeekableWrapper::from_str(to_parse);
         let mut vm = NullVm::new();
         let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
         rule_parser.parse_rules().expect("TODO: panic message");
@@ -263,7 +263,7 @@ identifier3 -> \"c_terminal\"| #;
             listelement -> \"g\" | \"h\";
 ";
         let mut peekable =
-            PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
+            PeekableWrapper::from_str(to_parse);
         let mut vm = NullVm::new();
         let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
         rule_parser.parse_rules().expect("TODO: panic message");
@@ -334,7 +334,7 @@ identifier3 -> \"c_terminal\"| #;
             l_element -> \"a\";\
 ";
         let mut peekable =
-            PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
+            PeekableWrapper::from_str(to_parse);
         let mut vm = NullVm::new();
         let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
         rule_parser.parse_rules().expect("TODO: panic message");

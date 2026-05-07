@@ -138,3 +138,13 @@ where
     }
     Ok(id_name)
 }
+
+#[cfg(test)]
+mod tests{
+    use crate::peekables::ParseProcess;
+
+    #[test]
+    fn test_parse_isize() {
+        let parse_process = ParseProcess::new(&mut String::from("asrgs").chars(), None, None);
+    }
+}

@@ -179,7 +179,7 @@ b -> \"bstring\";\
 ";
 
         let mut peekable =
-            PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
+            PeekableWrapper::from_str(to_parse);
         let mut vm = NullVm::new();
         let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
         let _rules = &rule_parser.parse_rules().unwrap().rules;
@@ -202,7 +202,7 @@ a_a -> \"a\";\
 ";
 
         let mut peekable =
-            PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
+            PeekableWrapper::from_str(to_parse);
         let mut vm = NullVm::new();
         let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
         rule_parser.parse_rules().unwrap();
@@ -225,7 +225,7 @@ a_a -> \"a\";\
             element -> \"a\";\
 ";
 
-        let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rules.chars().peekable());
+        let mut peekable = PeekableWrapper::from_str(rules);
         let mut vm = NullVm::new();
         let mut rule_parser = RuleParser::new(&mut peekable, &mut vm);
         rule_parser.parse_rules().unwrap();
@@ -255,7 +255,7 @@ whitespaces_s -> whitespace whitespaces_s| #;\
 whitespace -> \" \";";
 
         let mut peekable =
-            PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
+            PeekableWrapper::from_str(to_parse);
         let mut vm = NullVm::new();
         let rule_parser = RuleParser::new(&mut peekable, &mut vm);
         let parser_data = rule_parser.parser_data;
@@ -291,7 +291,7 @@ whitespaces_s -> whitespace whitespaces_s| #;\
 whitespace -> \" \";";
 
         let mut peekable =
-            PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
+            PeekableWrapper::from_str(to_parse);
         let mut vm = NullVm::new();
         let rule_parser = RuleParser::new(&mut peekable, &mut vm);
         let parser_data = rule_parser.parser_data;

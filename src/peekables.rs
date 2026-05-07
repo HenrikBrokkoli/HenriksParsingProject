@@ -5,6 +5,7 @@
 //! error reporting during parsing.
 
 use std::iter::Peekable;
+use std::str::Chars;
 
 pub trait TPeekable: Iterator {
     fn peek(&mut self) -> Option<&Self::Item>;
@@ -61,14 +62,17 @@ where
 impl<T> PeekableWrapper<T>
 where
     T: Iterator,
-    <T as Iterator>::Item: PartialEq,
+    T::Item: PartialEq,
 {
-    pub fn new<P>(peekable: Peekable<P>) -> PeekableWrapper<P>
-    where
-        P: Iterator,
-        <P as Iterator>::Item: PartialEq,
+    pub fn new(peekable: Peekable<T>) -> PeekableWrapper<T>
     {
         PeekableWrapper { peekable }
+    }
+}
+
+impl<'a> PeekableWrapper<Chars<'a>> {
+    pub fn from_str(input: &'a str) -> Self {
+        Self::new(input.chars().peekable())
     }
 }
 
@@ -100,6 +104,7 @@ where
             escape: false,
         }
     }
+
 
     pub fn new_nested(
         peekable: &mut T,
@@ -194,3 +199,4 @@ where
         true
     }
 }
+

@@ -91,8 +91,7 @@ where
     /// let parser = Parser::new_from_text(rules, &vm);
     /// ```
     pub fn new_from_text(rule_text: &str, vm: &'a T) -> Parser<'a, T> {
-        let mut peekable =
-            PeekableWrapper::<PeekableWrapper<Chars>>::new(rule_text.chars().peekable());
+        let mut peekable = PeekableWrapper::from_str(rule_text);
         let mut rule_parser = RuleParser::new(&mut peekable, vm);
         let _ = rule_parser.parse_rules().unwrap();
         let RuleParser {

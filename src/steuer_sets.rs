@@ -41,7 +41,6 @@ mod tests {
     use crate::steuer_sets::get_steuer_sets;
     use crate::test_helpers::make_memberset_no_empty;
     use crate::vms::NullVm;
-    use std::str::Chars;
 
     #[test]
     fn test_steuer_sets() {
@@ -51,7 +50,7 @@ mod tests {
             identifier2 -> \"b_terminal\"| #;
 ";
 
-        let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rules.chars().peekable());
+        let mut peekable = PeekableWrapper::from_str(rules);
         let mut vm = NullVm::new();
         let mut parser = RuleParser::new(&mut peekable, &mut vm);
         let _rule_dict = &parser.parse_rules().unwrap().rules;
@@ -95,7 +94,7 @@ mod tests {
             element -> \"a\";\
 ";
 
-        let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rules.chars().peekable());
+        let mut peekable = PeekableWrapper::from_str(rules);
         let mut vm = NullVm::new();
         let mut parser = RuleParser::new(&mut peekable, &mut vm);
         parser.parse_rules().unwrap();
@@ -140,7 +139,7 @@ mod tests {
             element -> \"a\";\
 ";
 
-        let mut peekable = PeekableWrapper::<PeekableWrapper<Chars>>::new(rules.chars().peekable());
+        let mut peekable = PeekableWrapper::from_str(rules);
         let mut vm = NullVm::new();
         let mut parser = RuleParser::new(&mut peekable, &mut vm);
         parser.parse_rules().unwrap();
@@ -209,7 +208,7 @@ whitespaces_s -> whitespace whitespaces_s| #;\
 whitespace -> \" \";";
 
         let mut peekable =
-            PeekableWrapper::<PeekableWrapper<Chars>>::new(to_parse.chars().peekable());
+            PeekableWrapper::from_str(to_parse);
         let mut vm = NullVm::new();
         let mut parser = RuleParser::new(&mut peekable, &mut vm);
         parser.parse_rules().unwrap();
