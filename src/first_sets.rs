@@ -139,7 +139,6 @@ mod tests {
     use crate::parser_data::ElementVerbose;
     use crate::peekables::PeekableWrapper;
     use crate::vms::NullVm;
-    use std::str::Chars;
 
     use crate::rule_parsing::RuleParser;
     use crate::test_helpers::make_memberset;

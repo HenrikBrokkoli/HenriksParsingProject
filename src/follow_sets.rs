@@ -154,8 +154,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::str::Chars;
-
     use crate::peekables::PeekableWrapper;
     use crate::vms::NullVm;
 

@@ -136,8 +136,6 @@ fn fill_with_steuer_set(
 
 #[cfg(test)]
 mod tests {
-    use std::str::Chars;
-
     use crate::peekables::PeekableWrapper;
     use crate::vms::NullVm;
 
