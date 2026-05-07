@@ -70,7 +70,7 @@ impl<T> Graph<T> {
         id: usize,
     ) -> bool {
         let connected_edges = self.connected_edges(source);
-        let mut previous: ThingWithNextEdge = ThingWithNextEdge::Node(source);
+        let mut previous = ThingWithNextEdge::Node(source);
         let mut next_edge_index = self.nodes[source].first_outgoing_edge;
         for connected_edge_index in connected_edges {
             let connected_edge = &self.edges[connected_edge_index];

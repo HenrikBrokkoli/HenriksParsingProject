@@ -24,7 +24,7 @@ pub type Graph = GraphNamedNodes<HashSet<SetMember>>;
 ///
 /// The start symbol's FOLLOW set is initialized with Terminate and information
 /// is propagated along a graph built from productions. Returns a map from
-/// non-terminal index to the set of terminal symbols that may follow it.
+/// a non-terminal index to the set of terminal symbols that may follow it.
 pub fn get_follow_sets<T>(
     start: ElementIndex,
     first_sets: &NamedSets,

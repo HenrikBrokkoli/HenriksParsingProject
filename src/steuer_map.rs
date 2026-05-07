@@ -68,8 +68,8 @@ fn steuermap_of_production(
     steuer_map: &mut Steuermap,
     prod: Rc<Production>,
     cur_rule_name: ElementIndex,
-    el_types: &Vec<ElementType>,
-    el_data: &Vec<ElementData>,
+    el_types: &[ElementType],
+    el_data: &[ElementData],
 ) -> Result<(), GrammarError> {
     let prod_ref = Rc::clone(&prod);
     let prod = &*prod;

@@ -17,7 +17,7 @@ use crate::vms::VM;
 /// For example, we have the production a -> element1 element2 element3 and want to start computing the follow_set of element1
 /// For that we need the first_set of [element2, element3].
 /// Our first_sets are {element2: ['a',empty], element3: ['b','c']}
-/// Our return  will be {'a','b','c'}
+/// Our return will be {'a','b','c'}
 pub fn first_set_of_partial<T>(
     el_ixs: &[ElementIndex],
     first_sets: &NamedSets,
