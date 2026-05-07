@@ -77,7 +77,7 @@ fn make_follow_sets_from_marked_graph(
         for (name, node_index) in follow_graph.names.iter() {
             let node: &NodeData<HashSet<SetMember>> =
                 follow_graph.get_node_by_index(*node_index)?;
-            let successors = follow_graph.successors(*name).unwrap();
+            let successors = follow_graph.successors(*name)?;
             for (successor_index, successor) in successors {
                 if !node.data.is_subset(&successor.data) {
                     changes = true;

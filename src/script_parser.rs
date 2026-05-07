@@ -265,12 +265,12 @@ where
         match prod {
             Production::NotEmpty(prod_not_empty) => {
                 for next_element_index in prod_not_empty {
-                    let elemente_next = self.elements.get(*next_element_index).unwrap().clone();
+                    let element_next = self.elements.get(*next_element_index).unwrap().clone();
 
-                    match elemente_next.et {
+                    match element_next.et {
                         ElementType::Terminal => {
                             let _ = tree.add_node(
-                                self.parse_terminal(to_parse, elemente_next.name.as_str())?,
+                                self.parse_terminal(to_parse, element_next.name.as_str())?,
                                 Some(id),
                             );
                         }
