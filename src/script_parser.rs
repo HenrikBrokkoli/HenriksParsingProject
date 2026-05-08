@@ -412,7 +412,7 @@ mod tests {
             .get_by_path_or_none(NodeId::new(0, 0), vec![0, 0].into_iter())
             .unwrap()
             .unwrap();
-        assert_eq!("a_terminal", res.data)
+        assert_eq!("a_terminal", res.data);
     }
 
     #[test]
@@ -430,7 +430,7 @@ mod tests {
         let res = tree
             .get_by_path_or_none(NodeId::new(0, 0), vec![0, 0].into_iter())
             .unwrap();
-        assert!(res.is_none())
+        assert!(res.is_none());
     }
 
     #[test]
@@ -450,7 +450,7 @@ mod tests {
             .unwrap()
             .unwrap()
             .data;
-        assert_eq!("b", res)
+        assert_eq!("b", res);
     }
 
     #[test]

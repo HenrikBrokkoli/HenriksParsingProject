@@ -39,16 +39,16 @@ where
         .data
         .insert(SetMember::Terminate);
     for (&el_index, nt_rules) in &parser_data.parse_rules.rules {
-        for production in nt_rules.possible_productions.iter() {
+        for production in &nt_rules.possible_productions {
             let prodi = &**production;
             if let Production::NotEmpty(prod) = prodi {
                 graph_marking_for_rightside_elements(
-                    &prod,
+                    prod,
                     &mut follow_graph,
-                    &first_sets,
+                    first_sets,
                     el_index,
-                    &parser_data,
-                )?
+                    parser_data,
+                )?;
             }
         }
     }
@@ -74,7 +74,7 @@ fn make_follow_sets_from_marked_graph(
     while changes {
         changes = false;
         let mut successor_indexes = vec![];
-        for (name, node_index) in follow_graph.names.iter() {
+        for (name, node_index) in &follow_graph.names {
             let node: &NodeData<HashSet<SetMember>> =
                 follow_graph.get_node_by_index(*node_index)?;
             let successors = follow_graph.successors(*name)?;
@@ -83,8 +83,7 @@ fn make_follow_sets_from_marked_graph(
                     changes = true;
                     let missing_in_successor = node
                         .data
-                        .difference(&successor.data)
-                        .map(|&x| x.clone())
+                        .difference(&successor.data).copied()
                         .collect::<Vec<SetMember>>();
                     successor_indexes.push((successor_index, missing_in_successor));
                 }
@@ -97,7 +96,7 @@ fn make_follow_sets_from_marked_graph(
                 .extend(members_missing);
         }
     }
-    for (name, index) in follow_graph.names.iter() {
+    for (name, index) in &follow_graph.names {
         follow_sets.insert(
             name.clone(),
             follow_graph.get_node_by_index(*index)?.data.clone(),
@@ -107,7 +106,7 @@ fn make_follow_sets_from_marked_graph(
 }
 
 fn graph_marking_for_rightside_elements<T>(
-    prod: &Vec<ElementIndex>,
+    prod: &[ElementIndex],
     follow_graph: &mut Graph,
     first_sets: &NamedSets,
     left_side: ElementIndex,
@@ -138,11 +137,9 @@ where
                 follow_graph
                     .get_node_mut(el_index)?
                     .data
-                    .extend(HashSet::<_>::from_iter(
-                        first_set_following
+                    .extend(first_set_following
                             .iter()
-                            .map(|x| SetMember::try_from(*x).unwrap()),
-                    ));
+                            .map(|x| SetMember::try_from(*x).unwrap()).collect::<HashSet<_>>());
             }
             if add_edge {
                 follow_graph.add_edge(left_side, el_index)?;

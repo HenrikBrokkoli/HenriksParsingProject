@@ -30,7 +30,14 @@ pub struct EdgeData {
     pub next_outgoing_edge: Option<EdgeIndex>,
 }
 
+impl<T> Default for Graph<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> Graph<T> {
+    #[must_use]
     pub fn new() -> Graph<T> {
         Graph {
             nodes: vec![],
@@ -99,6 +106,7 @@ impl<T> Graph<T> {
 
         true
     }
+    #[must_use]
     pub fn find_node_index(&self, source: NodeIndex, id: EdgeId) -> Option<NodeIndex> {
         let edges = self.connected_edges(source);
         for edge_index in edges {
@@ -128,6 +136,7 @@ impl<T> Graph<T> {
         cur_node_index
     }
 
+    #[must_use]
     pub fn find_node(&self, source: NodeIndex, id: EdgeId) -> Option<&NodeData<T>> {
         self.find_node_index(source, id)
             .map(|index| &self.nodes[index])
@@ -142,6 +151,7 @@ impl<T> Graph<T> {
             .map(|index| &self.nodes[index])
     }
 
+    #[must_use]
     pub fn successors(&self, source: NodeIndex) -> Successors<'_, T> {
         let first_outgoing_edge = self.nodes[source].first_outgoing_edge;
         Successors {
@@ -150,6 +160,7 @@ impl<T> Graph<T> {
         }
     }
 
+    #[must_use]
     pub fn connected_edges(&self, source: NodeIndex) -> ConnectedEdges<'_, T> {
         ConnectedEdges {
             graph: self,
@@ -176,9 +187,9 @@ impl<T> Graph<T> {
                 target: node_offset + edge.target,
                 next_outgoing_edge,
                 id: edge.id,
-            })
+            });
         }
-        self.add_edge(this, other + node_offset)
+        self.add_edge(this, other + node_offset);
     }
 }
 
@@ -187,7 +198,7 @@ pub struct Successors<'graph, T> {
     current_edge_index: Option<EdgeIndex>,
 }
 
-impl<'graph, T> Iterator for Successors<'graph, T> {
+impl<T> Iterator for Successors<'_, T> {
     type Item = NodeIndex;
 
     fn next(&mut self) -> Option<NodeIndex> {
@@ -207,7 +218,7 @@ pub struct ConnectedEdges<'graph, T> {
     current_edge_index: Option<EdgeIndex>,
 }
 
-impl<'graph, T> Iterator for ConnectedEdges<'graph, T> {
+impl<T> Iterator for ConnectedEdges<'_, T> {
     type Item = EdgeIndex;
 
     fn next(&mut self) -> Option<EdgeIndex> {

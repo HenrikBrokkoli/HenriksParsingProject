@@ -96,7 +96,7 @@ fn steuermap_of_production(
                     let steuer_menge = steuer_sets
                         .get(&first)
                         .ok_or(MissingSteuerSet { index: first })?;
-                    fill_with_steuer_set(steuer_menge, steuer_map, prod_ref, cur_rule_name)?;
+                    fill_with_steuer_set(steuer_menge, steuer_map, &prod_ref, cur_rule_name)?;
                 }
             }
             Ok(())
@@ -105,7 +105,7 @@ fn steuermap_of_production(
             let follow_set = follow_sets.get(&cur_rule_name).ok_or(MissingFollowSet {
                 index: cur_rule_name,
             })?;
-            fill_with_steuer_set(follow_set, steuer_map, prod_ref, cur_rule_name)?;
+            fill_with_steuer_set(follow_set, steuer_map, &prod_ref, cur_rule_name)?;
 
             Ok(())
         }
@@ -115,10 +115,10 @@ fn steuermap_of_production(
 fn fill_with_steuer_set(
     set_no_empty: &HashSet<SetMember>,
     steuer_map: &mut Steuermap,
-    prod: Rc<Production>,
+    prod: &Rc<Production>,
     cur_rule_name: ElementIndex,
 ) -> Result<(), GrammarError> {
-    for follow_char in set_no_empty.iter() {
+    for follow_char in set_no_empty {
         let old_key = steuer_map.insert(*follow_char, Rc::clone(&prod));
         if old_key.is_some() {
             return Err(SteuerSetsNotDistinct {

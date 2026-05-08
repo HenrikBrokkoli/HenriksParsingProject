@@ -18,7 +18,7 @@ impl fmt::Display for SetMemberWithEmpty {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SetMemberWithEmpty::Char(x) => {
-                write!(f, "'{}'", x)
+                write!(f, "'{x}'")
             }
             SetMemberWithEmpty::Empty => {
                 write!(f, "empty")
@@ -49,7 +49,7 @@ impl fmt::Display for SetMember {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SetMember::Char(x) => {
-                write!(f, "'{}'", x)
+                write!(f, "'{x}'")
             }
             SetMember::Terminate => {
                 write!(f, "terminate")

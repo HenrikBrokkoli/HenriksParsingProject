@@ -64,15 +64,12 @@ where
     let res = match set_maybe {
         None => {
             let mut set: HashSet<SetMemberWithEmpty> = HashSet::new();
-            let productions = match parser_data.parse_rules.rules.get(&el_ix) {
-                None => {
+            let Some(productions) = parser_data.parse_rules.rules.get(&el_ix) else {
                     return Err(GrammarError::MissingProduction { index: el_ix });
-                }
-                Some(x) => x,
-            };
-            for production in productions.possible_productions.iter() {
+                };
+            for production in &productions.possible_productions {
                 let rus = get_first_set_of_production(production, first_sets, parser_data)?;
-                set.extend(&rus)
+                set.extend(&rus);
             }
             first_sets.insert(el_ix, set.clone());
             Ok(set)

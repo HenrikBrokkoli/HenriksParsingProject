@@ -28,12 +28,12 @@ impl fmt::Display for GraphError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             NodeAlreadyExistsError { node_name } => {
-                write!(f, "Node with the name \"{}\" already exists", node_name)
+                write!(f, "Node with the name \"{node_name}\" already exists")
             }
             NodeDoesNotExistsError { node_name } => {
-                write!(f, "Node \"{}\" does not exist", node_name)
+                write!(f, "Node \"{node_name}\" does not exist")
             }
-            IndexOutOfBounds { index } => write!(f, "Index \"{}\" out of bounds", index),
+            IndexOutOfBounds { index } => write!(f, "Index \"{index}\" out of bounds"),
         }
     }
 }
@@ -41,6 +41,12 @@ impl fmt::Display for GraphError {
 pub struct GraphNamedNodes<Ta> {
     graph: Graph<Ta>,
     pub names: HashMap<ElementIndex, NodeIndex>,
+}
+
+impl<Ta> Default for GraphNamedNodes<Ta> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<Ta> GraphNamedNodes<Ta> {

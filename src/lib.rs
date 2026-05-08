@@ -45,7 +45,7 @@
 //! - `parser_data`: Data structures for parser
 //! - `first_sets`, `follow_sets`: LL(1) parsing algorithm components
 //! - `errors`: Error types and handling
-
+#![warn(clippy::pedantic)]
 pub mod errors;
 pub mod first_sets;
 pub mod follow_sets;

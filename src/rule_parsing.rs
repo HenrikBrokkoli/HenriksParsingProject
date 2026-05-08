@@ -607,7 +607,7 @@ mod tests {
             ElementVerbose::new(String::from("identifier"), ElementType::NonTerminal),
             parser.parser_data.get_element_verbose(rule_name).unwrap()
         );
-        let first = &**rule.possible_productions.get(0).unwrap();
+        let first = &**rule.possible_productions.first().unwrap();
         let result = match first {
             Production::Empty => {
                 panic!()
@@ -638,7 +638,7 @@ rule2 -> \"b_terminal\"\
         let rules = &parser.parser_data.parse_rules.rules;
         let rule1 = rules.get(&0).unwrap();
         let rule2 = rules.get(&1).unwrap();
-        let prod = &**rule1.possible_productions.get(0).unwrap();
+        let prod = &**rule1.possible_productions.first().unwrap();
         let rule1_production1 = match prod {
             Production::Empty => {
                 panic!()
@@ -652,7 +652,7 @@ rule2 -> \"b_terminal\"\
             }
             Production::NotEmpty(x, ..) => x,
         };
-        let prod = &**rule2.possible_productions.get(0).unwrap();
+        let prod = &**rule2.possible_productions.first().unwrap();
         let rule2_production1 = match prod {
             Production::Empty => {
                 panic!()

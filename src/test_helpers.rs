@@ -47,7 +47,7 @@ mod tests {
                 SetMemberWithEmpty::Terminate
             ]),
             memberset
-        )
+        );
     }
     #[test]
     fn test_make_memberset_no_empty() {
@@ -60,6 +60,6 @@ mod tests {
                 SetMember::Terminate
             ]),
             memberset
-        )
+        );
     }
 }

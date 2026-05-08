@@ -49,7 +49,7 @@ impl VM for StackVm {
         let mut instructions = Vec::new();
         parse_whitespace(to_parse);
 
-        while let Some(_) = to_parse.peek() {
+        while to_parse.peek().is_some() {
             let res = parse_var_name(to_parse)?;
             //match all instruction names to instructions
             match res.as_str() {
@@ -101,7 +101,7 @@ impl VM for StackVm {
                     let res = state.reg + var;
                     state.stack.push(res);
                 } else {
-                    state.error = 1
+                    state.error = 1;
                 }
             }
             Instruction::Sub => {
@@ -109,7 +109,7 @@ impl VM for StackVm {
                     let res = var - state.reg;
                     state.stack.push(res);
                 } else {
-                    state.error = 1
+                    state.error = 1;
                 }
             }
 
@@ -118,14 +118,14 @@ impl VM for StackVm {
                 if let Some(res) = state.stack.pop() {
                     state.reg = res;
                 } else {
-                    state.error = 1
+                    state.error = 1;
                 }
             }
             Instruction::PopToReg2 => {
                 if let Some(res) = state.stack.pop() {
                     state.reg2 = res;
                 } else {
-                    state.error = 1
+                    state.error = 1;
                 }
             }
             Instruction::PushConst(c) => {
@@ -170,13 +170,13 @@ impl VM for StackVm {
                     let res = val * base.pow(state.reg as u32) as isize + state.reg2;
                     state.stack.push(res);
                 } else {
-                    state.error = 1
+                    state.error = 1;
                 }
             }
             Instruction::PushReg => state.stack.push(state.reg),
             Instruction::PushReg2 => state.stack.push(state.reg2),
             Instruction::RegAddConst(c) => {
-                state.reg = state.reg + c;
+                state.reg += c;
             }
         }
     }

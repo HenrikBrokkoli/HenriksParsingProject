@@ -15,12 +15,10 @@ pub fn get_steuer_sets(
 ) -> Result<NamedSetsNoEmpty, GrammarError> {
     let mut steuer_sets = NamedSetsNoEmpty::new();
     for (name, first) in first_sets.iter() {
-        let mut steuer = HashSet::from_iter(
-            first
+        let mut steuer = first
                 .iter()
                 .filter(|member| **member != SetMemberWithEmpty::Empty)
-                .map(|x| SetMember::try_from(*x).unwrap()),
-        );
+                .map(|x| SetMember::try_from(*x).unwrap()).collect::<HashSet<_>>();
         if first.contains(&SetMemberWithEmpty::Empty) {
             let follow = follow_sets
                 .get(name)

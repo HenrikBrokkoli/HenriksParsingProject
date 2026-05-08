@@ -121,21 +121,21 @@ impl fmt::Display for GrammarError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             GrammarError::MissingFollowSet { index } => {
-                write!(f, " \"{}\" has no followset", index)
+                write!(f, " \"{index}\" has no followset")
             }
             GrammarError::MissingElementForIndex { index } => {
-                write!(f, " \"{}\" has no entry in elements", index)
+                write!(f, " \"{index}\" has no entry in elements")
             }
             GrammarError::MissingFirstSet { index } => write!(f, " \"{}\" has no firstset", index),
             GrammarError::MissingSteuerSet { index } => {
-                write!(f, " \"{}\" has no steuerset", index)
+                write!(f, " \"{index}\" has no steuerset")
             }
             GrammarError::MissingProduction { index } => {
-                write!(f, " \"{}\" not in productions", index)
+                write!(f, " \"{index}\" not in productions")
             }
             GrammarError::SteuerSetsNotDistinct { .. } => write!(f, "steuersets not distinct"),
             GrammarError::UnexpectedElementError { reason, pos } => {
-                write!(f, " \"{}\" at pos {} was not expected", reason, pos)
+                write!(f, " \"{reason}\" at pos {pos} was not expected")
             }
             GrammarError::GraphNodeAlreadyExistsError { .. } => {
                 write!(f, "graph node already exists")
